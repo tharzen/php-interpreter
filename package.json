@@ -1,0 +1,27 @@
+{
+  "name": "php-interpreter",
+  "version": "1.0.0",
+  "description": "A PHP interpreter written by JavaScript",
+  "main": "main.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eou/php-interpreter.git"
+  },
+  "keywords": [
+    "interpreter"
+  ],
+  "author": "eou",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/eou/php-interpreter/issues"
+  },
+  "homepage": "https://github.com/eou/php-interpreter#readme",
+  "devDependencies": {
+    "@types/node": "^12.6.9",
+    "ts-node": "^8.3.0",
+    "tslint": "^5.18.0"
+  }
+}
