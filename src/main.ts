@@ -1,6 +1,6 @@
 import fs = require("fs");
 import util = require("util");
-import engine = require("../src/index.js");
+import engine = require("../../src/index.js");
 
 const parser: any = new engine({
     // options
@@ -17,6 +17,6 @@ const parser: any = new engine({
 
 const phpFile = fs.readFileSync(__dirname + "/myTest.php");
 
-const ast = parser.parseCode("", phpFile.toString());
+const ast = parser.parseCode(phpFile.toString());
 // console.log(util.inspect(parser, { depth: null }));
 console.log(util.inspect(ast, { depth: null }));
