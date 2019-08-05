@@ -2,8 +2,9 @@
  * This file is the main entry for interpreting PHP.
  */
 
- import { engine } from "../../src/index";
- import { Interpreter } from "./interpreter";
+
+import { engine } from "./php-parser/src/index";
+import { Interpreter } from "./interpreter/interpreter";
 
 
 
