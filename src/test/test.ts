@@ -1,6 +1,6 @@
-import fs = require("fs");
-import util = require("util");
-import engine = require("../../src/index.js");
+import fs = require('fs');
+import util = require('util');
+import engine = require('../php-parser/src/index');
 
 const parser: any = new engine({
     // options
@@ -14,7 +14,6 @@ const parser: any = new engine({
 
 // Retrieve the AST from the specified source
 // var eval = parser.parseEval('echo "My first PHP script!";');
-
 const phpFile = fs.readFileSync(__dirname + "/myTest.php");
 
 const ast = parser.parseCode(phpFile.toString());

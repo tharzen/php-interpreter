@@ -1,22 +1,9 @@
-import fs = require("fs");
-import util = require("util");
-import engine = require("../../src/index.js");
+/**
+ * This file is the main entry for interpreting PHP.
+ */
 
-const parser: any = new engine({
-    // options
-    ast: {
-        withPositions: true,
-    },
-    parser: {
-        locations: true,
-    },
-});
+ import { engine } from "../../src/index";
+ import { Interpreter } from "./interpreter";
 
-// Retrieve the AST from the specified source
-// var eval = parser.parseEval('echo "My first PHP script!";');
 
-const phpFile = fs.readFileSync(__dirname + "/myTest.php");
 
-const ast = parser.parseCode(phpFile.toString());
-// console.log(util.inspect(parser, { depth: null }));
-console.log(util.inspect(ast, { depth: null }));
