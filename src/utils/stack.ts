@@ -1,15 +1,20 @@
+/**
+ * @authors https://github.com/eou/php-interpreter
+ * @description This file is for definition of stack data structure.
+ */
+
 export class Stack<T> {
-    _container: T[] = [];
-    size(): number {
-        return this._container.length;
+    public container: T[] = [];
+    public size(): number {
+        return this.container.length;
     }
-    push(val: T) {
-        this._container.push(val);
+    public push(val: T) {
+        this.container.push(val);
     }
-    pop(): T | undefined {
-        return this._container.pop();
+    public pop(): T | undefined {
+        return this.container.pop();
     }
-    top(): T | undefined {
-        return this._container[this.size()];
+    public top(): T | undefined {
+        return this.container[this.size()];
     }
 }
