@@ -1,6 +1,6 @@
-import fs = require('fs');
-import util = require('util');
-import engine = require('../php-parser/src/index');
+import fs = require("fs");
+import util = require("util");
+import engine = require("../interpreter/php-parser/src/index");
 
 const parser: any = new engine({
     // options

@@ -3,9 +3,8 @@
  * @description This file is the main entry of interpreter.
  */
 
-import { AST } from "../php-parser/src/ast";
-import { Node } from "../php-parser/src/ast/node";
 import { Evaluator } from "./evaluator/evaluator";
+import { AST } from "./php-parser/src/ast";
 
 /**
  * @param {object}  ast - abstract syntax tree

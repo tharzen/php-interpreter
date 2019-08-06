@@ -3,7 +3,7 @@
  * @description This file is the main entry for interpreting PHP.
  */
 import { Interpreter } from "./interpreter/interpreter";
-import engine from "./php-parser/src/index.js";
+import engine from "./interpreter/php-parser/src/index.js";
 
 const parser = new engine({
     ast: {

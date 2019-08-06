@@ -1,0 +1,3 @@
+[submodule "src/interpreter/php-parser"]
+	path = src/interpreter/php-parser
+	url = https://github.com/eou/php-parser.git

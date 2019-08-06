@@ -3,10 +3,10 @@
  * @description This file is the main entry of interpreter.
  */
 
-import { AST } from "../../php-parser/src/ast";
-import { Node } from "../../php-parser/src/ast/node";
 import { Stack } from "../../utils/stack";
 import { ENV } from "../environment";
+import { AST } from "../php-parser/src/ast";
+import { Node } from "../php-parser/src/ast/node";
 
 /**
  * @param {object}  ast - abstract syntax tree
