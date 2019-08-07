@@ -4,5 +4,9 @@
  */
 import { Interpreter } from "./interpreter/interpreter";
 
-const interpreter = new Interpreter("<?php $a = 1 ?>");
+const php = `
+<?php
+    $a = 1;
+?>`;
+const interpreter = new Interpreter(php);
 interpreter.run();
