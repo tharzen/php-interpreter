@@ -1,35 +1,11 @@
 <?php
-
-function &get_instance_ref()
+global $a;
+$a = 1;
+function aa()
 {
-    static $obj;
-
-    echo 'Static object: ';
-    var_dump($obj);
-    if (!isset($obj)) {
-        // 将一个引用赋值给静态变量
-        $obj = &new stdclass;
-    }
-    $obj->property++;
-    return $obj;
+    $a += 10;
+    echo $a;
 }
-
-function &get_instance_noref()
-{
-    static $obj;
-
-    echo 'Static object: ';
-    var_dump($obj);
-    if (!isset($obj)) {
-        // 将一个对象赋值给静态变量
-        $obj = new stdclass;
-    }
-    $obj->property++;
-    return $obj;
-}
-
-$obj1 = get_instance_ref();
-$still_obj1 = get_instance_ref();
-echo "\n";
-$obj2 = get_instance_noref();
-$still_obj2 = get_instance_noref();
+aa();
+echo $a;
+?>

@@ -25,7 +25,7 @@ interface IVSlot {
 interface IVStore {
     val: number | boolean | null;
     data: IHStore;
-    refcount: number;
+    // refcount: number;   // reference-counting
 }
 
 /**
@@ -35,10 +35,10 @@ interface IVStore {
  */
 interface IHStore {
     data: object;
-    refcount: number;
+    // refcount: number;   // reference-counting
 }
 
-class VAR {
+class Var {
     public VSlot: IVSlot;
     public VStore: IVStore;
     public HStore: IHStore;
@@ -58,4 +58,4 @@ class VAR {
     }
 }
 
-export { VAR };
+export { Var };
