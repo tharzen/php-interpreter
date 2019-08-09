@@ -57,7 +57,6 @@ Evaluator.prototype.evaluateAssign = function() {
                         vals: vstore.val,
                     };
                     this.stk.push(stknode);
-                    console.log(util.inspect(this, { depth: null }));
                 } else if (typeof rightNode.vals === "object") {
 
                 }
@@ -82,7 +81,6 @@ Evaluator.prototype.evaluateAssign = function() {
                         vals: vstore.val,
                     };
                     this.stk.push(stknode);
-                    console.log(util.inspect(this, { depth: null }));
                 } else if (typeof rightNode.vals === "object") {
 
                 }
