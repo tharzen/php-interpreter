@@ -1,3 +1,7 @@
+/**
+ * @description
+ * Test file for stack data structure.
+ */
 import util = require("util");
 import { Stack } from "./stack";
 

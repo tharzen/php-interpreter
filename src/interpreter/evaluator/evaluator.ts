@@ -20,8 +20,32 @@ class Evaluator {
     public exp: Node;
     public stk: Stack<IStkNode>;
 
+    /**
+     * @description
+     * The main entry for running the evaluator.
+     */
     public run: () => void;
+
+    /**
+     * @description
+     * The main entry for evaluation.
+     */
     public evaluate: (expr: Node) => void;
+
+    /**
+     * @description
+     * The basic assignment operator is "=".
+     * There are "combined operators" for all of the binary arithmetic, array union and string operators
+     * that allow you to use a value in an expression and then set its value to the result of that expression
+     * @example
+     * $a = 1;
+     * $a += 1;
+     * $a = $b;
+     * $a = &$b;
+     * $a = ($b = 5);
+     * @file
+     * evaluator/evaluation/assign.ts
+     */
     public evaluateAssign: () => void;
 
     constructor(ast: AST) {
@@ -55,37 +79,15 @@ Evaluator.prototype.evaluate = function(expr) {
     }
 };
 
-Evaluator.prototype.evaluateAssign = function() {
-    // split the top element into seperate steps
-    const topStkNode = this.stk.top; this.stk.pop();
-    this.stk.push({ node: topStkNode.value.node.left });
-    this.stk.push({ opts: topStkNode.value.node.operator });
-    this.evaluate(topStkNode.value.node.right);     // evalute right expressions and then push the value back into stack
-
-    // start assign
-    const rightVal = this.stk.top.value; this.stk.pop();
-    const operator = this.stk.top.value; this.stk.pop();
-    const leftVal = this.stk.top.value; this.stk.pop();
-    if (operator.opts === "=") {
-        // search this variable in the current environment otherwise new one
-        const currentEnv = this.env.env.peekLast();
-        if (currentEnv[leftVal.node.name] !== undefined) {
-            
-        } else {
-            
-        }
-    }
-};
-
 /**
  * @description
  * Node in the execution stack. It could be a AST node, an instruction, an operator and etc.
  */
 interface IStkNode {
+    inst?: string;      // instruction ?
     node?: Node;        // AST node ?
     opts?: string;      // operator ?
     vals?: any;         // value ?
-    inst?: string;      // instruction ?
 }
 
 export { Evaluator };

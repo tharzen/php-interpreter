@@ -1,7 +1,15 @@
 /**
  * @authors https://github.com/eou/php-interpreter
  * @description This file is for definition of variable memory model.
+ * The abstract memory model used by PHP for storing variables.
+ * [VSlot $a *] --> [VStore object *] --> [HStore Point [VSlot $x *] [VSlot $y *]]
+ *                                                          ↓             ↓
+ *                                                          ↓             ↓
+ *                                                   [VStore int 1]  [VStore int 3]
+ * @see https://github.com/php/php-langspec/blob/master/spec/04-basic-concepts.md#the-memory-model
  */
+
+import { IMap } from "./utils/map";
 
 /**
  * @description
@@ -12,7 +20,7 @@
  */
 interface IVSlot {
     name: string;
-    val: IVStore;
+    vstoreId: number;   // since there is no pointer in TypeScript, we use `vstoreid` to find the correspond VStore
 }
 
 /**
@@ -23,8 +31,9 @@ interface IVSlot {
  * or it can contain a handle pointing to an HStore.
  */
 interface IVStore {
-    val: number | boolean | null;
-    data: IHStore;
+    type: string;   // number, boolean, string, array(an array in PHP is actually an ordered map), object...
+    val: number | boolean | string | null;   // only scalar type
+    hstoreId?: number;     // since there is no pointer in TypeScript, we use `hstoreid` to find the correspond HStore
     // refcount: number;   // reference-counting
 }
 
@@ -34,28 +43,25 @@ interface IVStore {
  * and is created by the Engine as needed. HStore is a container which contains VSlots.
  */
 interface IHStore {
-    data: object;
+    type: string;   //  array(an array in PHP is actually an ordered map), object (Point), ...
+    data: IVSlot | object;  // data fields in the object
     // refcount: number;   // reference-counting
 }
 
-class Var {
-    public VSlot: IVSlot;
-    public VStore: IVStore;
-    public HStore: IHStore;
-    constructor(name: string, val?: number | boolean | object | null) {
-        this.VSlot.name = name;
-        this.VSlot.val = this.VStore;
-        if (val) {
-            if (typeof val === "number" || typeof val === "boolean") {
-                this.VStore.val = val;
-                this.VStore.data = null;
-            } else {
-                this.VStore.val = null;
-                this.VStore.data = this.HStore;
-                this.HStore.data = val;
-            }
-        }
-    }
-}
+/**
+ * @description
+ * A variable slot (VSlot) map which represents an object that maps variable name to VSlot
+ */
+export type IVSlotMap = IMap<IVSlot>;
 
-export { Var };
+/**
+ * @description
+ * A value storage location (VStore) map which represents an object that maps VStoreid to VStore
+ */
+export type IVStoreMap = IMap<IVStore>;
+
+/**
+ * @description
+ * A heap storage location (HStore) map which represents an object that maps HStoreid to HStore
+ */
+export type IHStoreMap = IMap<IHStore>;

@@ -1,5 +1,3 @@
-import { timingSafeEqual } from "crypto";
-
 /**
  * @authors https://github.com/eou/php-interpreter
  * @description

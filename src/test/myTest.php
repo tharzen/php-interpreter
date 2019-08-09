@@ -1,11 +1,18 @@
 <?php
-global $a;
-$a = 1;
-function aa()
+$a = array(1);
+$b = &$a;
+function f($x)
 {
-    $a += 10;
-    echo $a;
+    global $a;
+    global $b;
+    echo ($a[0] + $b[0] + $x);
 }
-aa();
-echo $a;
+f(2);
+$a[0] = $a[0] + 1;
+f(2);
+
+$c = 1;
+$d = $c;
+$d = 2;
+echo $c;
 ?>

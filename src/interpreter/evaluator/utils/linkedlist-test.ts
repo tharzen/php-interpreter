@@ -1,3 +1,7 @@
+/**
+ * @description
+ * Test file for linkedlist data structure.
+ */
 import util = require("util");
 import { LinkedList } from "./linkedlist";
 

@@ -1,9 +1,12 @@
 /**
  * @authors https://github.com/eou/php-interpreter
  * @description This file is the main entry of interpreter.
+ * @see https://github.com/php/php-langspec/tree/master/spec
  */
 
+import "./evaluator/evaluation/assign";
 import { Evaluator } from "./evaluator/evaluator";
+import { IMap } from "./evaluator/utils/map";
 import { AST } from "./php-parser/src/ast";
 import * as Parser from "./php-parser/src/index.js";
 
@@ -18,7 +21,7 @@ import * as Parser from "./php-parser/src/index.js";
 class Interpreter {
     public ast: AST;
     public evl: Evaluator;
-    public ini: Map<string, boolean>;
+    public ini: IMap<boolean>;
     public res: string;
     public src: string;
     public run: () => void;
