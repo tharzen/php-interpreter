@@ -3,29 +3,29 @@
  * @description This file is for the definition of interperter environment.
  */
 
-import { LinkedList } from "./utils/linkedlist";
 import { IMap } from "./utils/map";
-import { IHStoreMap, IVSlotMap, IVStoreMap } from "./variable";
+import { IBindings } from "./variable";
 
 /**
  * @description
- * The bindings in an environment is 3 maps: variable name => vstore id => vstore => hstore id => hstore
+ * Environment model.
  * @example
- * `$a = 1;` means add "a" into vslot, 1 into vstore whose hstore id is null
- * `$b = $a;` is copying all `$a` information to `$b`,
- *            which means add "b" into vslot, add another 1 into vstore whose hstore id is null
- * `$c = &$a;` is copying by reference, which means add "c" into vslot, the vstore id of "c" is the same as "a"
+ * global; function; closure; class (+ function env); namespace;
  */
-interface IBindings {
-    vslot: IVSlotMap;   // name     => name                 + vstoreid
-    vstore: IVStoreMap; // vstoreid => vstore, type, val    + hstoreid
-    hstore: IHStoreMap; // hstoreid => hstore => data
-}
-
 interface IEnv {
-    bindings: IBindings;
-    meta: object;       // other information besides bindings in this environment
-    // maybe more meta information here
+    name: string;       // environment name
+    type: string;       // environment type
+    init: object;       // contains initialization of this environment
+    bind: IBindings;    // variable bindings
+    outer: number;      // outer environment
+    encls: {
+        _class: number[];
+        _function: number[];
+        _closure: number[];
+        _namespace: number[];
+    };                  // enclosed environments
+    stati: object;      // static
+    meta: object;       // other information ?
 }
 
 /**
@@ -36,14 +36,30 @@ interface IEnv {
  * Without any namespace definition, all class and function definitions are placed into the global space
  */
 class Env {
-    // a linkedlist of environments, notice that the head is the global environment
-    public env: LinkedList<IEnv>;
-    // a map stores static variable, note that function name will be func_xxx, and class name will be class_xx
-    public staticEnv: IMap<IBindings>;
-
+    public env: IMap<IEnv>;     // a sequence of environments, notice that the first one is the global environment
+    public idx: number = 0;     // current environment
     constructor() {
-        this.env = new LinkedList<IEnv>();
-        this.staticEnv = {};
+        this.env = {};
+        // initialize global environment
+        this.env[0] = {
+            bind: {
+                hstore: {},
+                vslot: {},
+                vstore: {},
+            },
+            encls: {
+                _class: [],
+                _closure: [],
+                _function: [],
+                _namespace: [],
+            },
+            init: null,
+            meta: null,
+            name: "global",
+            outer: null,
+            stati: null,
+            type: "global",
+        };
     }
 }
 

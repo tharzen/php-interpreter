@@ -15,8 +15,12 @@ interpreter.run();
 ```
 
 The front end of it is [php-parser](https://github.com/glayzzle/php-parser).
+
 The back end of it is to evaluate the abstract syntax tree directly.
-The evaluator use execution stack to execute each expression and modify the variables in environment.
+
+The evaluator uses execution stack to execute every expression and manipulates the variables in environment.
+
+Currently there is no intermediate tier part.
 
 ### Language Specification
 The PHP language specification [php-langspec](https://github.com/php/php-langspec/blob/master/spec).
@@ -24,15 +28,19 @@ The PHP language specification [php-langspec](https://github.com/php/php-langspe
 ### Memory Model 
 The implementation of variable system is based on abstract model defined in [PHP langspec - memory model](https://github.com/php/php-langspec/blob/master/spec/04-basic-concepts.md#the-memory-model).
 
+Traditionally, an environment is linked with its outer or enclosed environment thus it could be a linked list. And environments in this interpreter is contained by a Map. After the program exit one environment, we may destroy it or store it since the program may access some environments or some variables in them again such as `namespace`, `anonymous function`, `static`.
+
+Each environment has one "bind" which contains 3 connected maps: vslot, vstore, hstore which represents a whole variable model in this environment.
+
 
 ### Development
-1. variable
-   1. array (ordered map)
-2. assignment
-3. loop
-4. conditional
-5. function
-6. class
+- variable
+   - array (ordered map)
+- assignment
+- loop
+- conditional
+- function
+- class
 
 ## Built With
 - [php-parser v3.0.0-prerelease.8](https://github.com/glayzzle/php-parser).

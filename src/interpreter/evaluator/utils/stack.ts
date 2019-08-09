@@ -39,39 +39,3 @@ export class Stack<T> extends LinkedList<T>{
         }
     }
 }
-
-// export class Stack<T> {
-//     private container: T[] = [];
-
-//     /**
-//      * @description
-//      * Returns the number of elements in this list
-//      */
-//     public size(): number {
-//         return this.container.length;
-//     }
-
-//     /**
-//      * @description
-//      * Pushes the specified element to the stack
-//      */
-//     public push(val: T) {
-//         this.container.push(val);
-//     }
-
-//     /**
-//      * @description
-//      * Pops the top element from the stack
-//      */
-//     public pop(): T | undefined {
-//         return this.container.pop();
-//     }
-
-//     /**
-//      * @description
-//      * Returns the top element from the stack
-//      */
-//     public top(): T | undefined {
-//         return this.container[this.size()];
-//     }
-// }

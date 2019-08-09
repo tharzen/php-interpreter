@@ -21,7 +21,7 @@ import * as Parser from "./php-parser/src/index.js";
 class Interpreter {
     public ast: AST;
     public evl: Evaluator;
-    public ini: IMap<boolean>;
+    public ini: IMap<boolean>;      // setting => true / false
     public res: string;
     public src: string;
     public run: () => void;

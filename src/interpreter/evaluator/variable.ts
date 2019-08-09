@@ -34,7 +34,7 @@ interface IVStore {
     type: string;   // number, boolean, string, array(an array in PHP is actually an ordered map), object...
     val: number | boolean | string | null;   // only scalar type
     hstoreId?: number;     // since there is no pointer in TypeScript, we use `hstoreid` to find the correspond HStore
-    // refcount: number;   // reference-counting
+    refcount: number;   // reference-counting
 }
 
 /**
@@ -44,24 +44,40 @@ interface IVStore {
  */
 interface IHStore {
     type: string;   //  array(an array in PHP is actually an ordered map), object (Point), ...
-    data: IVSlot | object;  // data fields in the object
-    // refcount: number;   // reference-counting
+    data: IBindings | object;  // data fields in the object
+    refcount: number;   // reference-counting
 }
 
 /**
  * @description
  * A variable slot (VSlot) map which represents an object that maps variable name to VSlot
  */
-export type IVSlotMap = IMap<IVSlot>;
+type IVSlotMap = IMap<IVSlot>;
 
 /**
  * @description
  * A value storage location (VStore) map which represents an object that maps VStoreid to VStore
  */
-export type IVStoreMap = IMap<IVStore>;
+type IVStoreMap = IMap<IVStore>;
 
 /**
  * @description
  * A heap storage location (HStore) map which represents an object that maps HStoreid to HStore
  */
-export type IHStoreMap = IMap<IHStore>;
+type IHStoreMap = IMap<IHStore>;
+
+/**
+ * @description
+ * The bindings in an environment is 3 maps: variable name => vstore id => vstore => hstore id => hstore
+ * @example
+ * `$a = 1;`    means add "a" into vslot, 1 into vstore whose hstore id is null
+ * `$b = $a;`   is copying all `$a` information to `$b`,
+ *                  which means add "b" into vslot, add another 1 into vstore whose hstore id is null
+ * `$c = &$a;`  is copying by reference
+ *                  which means add "c" into vslot, the vstore id of "c" is the same as "a"
+ */
+export interface IBindings {
+    vslot: IVSlotMap;   // name     => name                 + vstoreid
+    vstore: IVStoreMap; // vstoreid => vstore, type, val    + hstoreid
+    hstore: IHStoreMap; // hstoreid => hstore => data
+}

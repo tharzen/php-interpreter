@@ -30,23 +30,24 @@ class Evaluator {
      * @description
      * The main entry for evaluation.
      */
-    public evaluate: (expr: Node) => void;
+    public evaluate: () => void;
 
     /**
      * @description
-     * The basic assignment operator is "=".
+     * The basic assignment operator is "="
      * There are "combined operators" for all of the binary arithmetic, array union and string operators
-     * that allow you to use a value in an expression and then set its value to the result of that expression
-     * @example
-     * $a = 1;
-     * $a += 1;
-     * $a = $b;
-     * $a = &$b;
-     * $a = ($b = 5);
      * @file
      * evaluator/evaluation/assign.ts
      */
     public evaluateAssign: () => void;
+
+    /**
+     * @description
+     * Convert array on PHP to map object in the variable system.
+     * @file
+     * evaluator/evaluation/array.ts
+     */
+    public evaluateArray: () => void;
 
     constructor(ast: AST) {
         this.ast = ast;
@@ -58,16 +59,22 @@ class Evaluator {
 Evaluator.prototype.run = function() {
     // the root node of AST is "Program", its children field contains the expressions we'll evaluate
     this.ast.children.forEach((child: Node) => {
-        this.evaluate(child);
+        const stknode: IStkNode = {
+            node: child,
+        };
+        this.stk.push(stknode);
+        this.evaluate();
     });
 };
 
-Evaluator.prototype.evaluate = function(expr) {
+Evaluator.prototype.evaluate = function() {
+    // each time evaluate top element of stack
+    const expr: Node = this.stk.top.value.node; this.stk.pop();
     if (expr.kind === "expressionstatement") {
         switch (expr.expression.kind) {
             case "assign": {
                 const stknode: IStkNode = {
-                    node: expr,
+                    node: expr.expression,
                 };
                 this.stk.push(stknode);
                 this.evaluateAssign();
@@ -76,6 +83,29 @@ Evaluator.prototype.evaluate = function(expr) {
             default:
                 break;
         }
+    } else if (expr.kind === "boolean") {
+        const stknode: IStkNode = {
+            vals: Boolean(expr.value),
+        };
+        this.stk.push(stknode);
+    } else if (expr.kind === "number") {
+        const stknode: IStkNode = {
+            vals: Number(expr.value),
+        };
+        this.stk.push(stknode);
+    } else if (expr.kind === "string") {
+        const stknode: IStkNode = {
+            vals: String(expr.value),
+        };
+        this.stk.push(stknode);
+    } else if (expr.kind === "assign") {
+        const stknode: IStkNode = {
+            node: expr,
+        };
+        this.stk.push(stknode);
+        this.evaluateAssign();
+    } else {
+        throw new Error("Unknown expression type: " + expr.kind);
     }
 };
 
@@ -83,10 +113,10 @@ Evaluator.prototype.evaluate = function(expr) {
  * @description
  * Node in the execution stack. It could be a AST node, an instruction, an operator and etc.
  */
-interface IStkNode {
+export interface IStkNode {
     inst?: string;      // instruction ?
     node?: Node;        // AST node ?
-    opts?: string;      // operator ?
+    opts?: any;      // operator ?
     vals?: any;         // value ?
 }
 
