@@ -23,6 +23,7 @@ Evaluator.prototype.evaluateOffset = function() {
         defined: { array: false, offset: false },
         global: false,
         loc: null,
+        name: { array: offsetNode.node.what.name, offset: { val: null, empty: true } },
         val: null,
     };
 
@@ -40,36 +41,44 @@ Evaluator.prototype.evaluateOffset = function() {
         offsetVal.loc.array = varNode.res.loc;
     } else {
         // array does not exist
-        
+        // need to push the result to the stack for possible next evaluation
+        this.stk.push({ res: offsetVal, val: null });
+        return;
     }
 
+    const env = offsetVal.global ? this.env.env[0] : this.env.env[this.env.idx];
+    const loc = offsetVal.loc.array;
+    const hstore = env.bind.hstore[loc[2]];     // get the array location
     if (offsetNode.node.offset) {
-        this.evaluate();    // evaluate 'offset' which is a key in the array, and it can only be integer or string
+        this.evaluate();    // evaluate 'offset' which is a key in the array, and it should be integer or string
         const keyNode = this.stk.top.value; this.stk.pop();
-        const env = offsetVal.global ? this.env.env[0] : this.env.env[this.env.idx];
-        const loc = offsetVal.loc.array;
-        const hstore = env.bind.hstore[loc[2]];     // find the array location
+        // find the target element in the array
         if (hstore.data.vslot[keyNode.val] !== undefined) {
             const vslot = hstore.data.vslot[keyNode.val];
             offsetVal.defined.offset = true;
+            offsetVal.name.offset.val = vslot.name;
+            offsetVal.name.offset.empty = false;
             offsetVal.val.type = hstore.data.vstore[vslot.vstoreId].type;
             offsetVal.val.val = hstore.data.vstore[vslot.vstoreId].val;     // maybe number, string, boolean or object
         } else {
             // offset exists but no such element
+            offsetVal.name.offset.val = keyNode.val;
+            offsetVal.name.offset.empty = false;
         }
     } else {
-        // no offset
-
+        // array exists but no given offset, a[], then we use next available index in the array
+        offsetVal.name.offset.val = hstore.meta;
     }
 
-    // need to push the value to the stack for possible next evaluation
+    // need to push the result to the stack for possible next evaluation
     const stknode: IStkNode = { res: offsetVal, val: offsetVal.val.val };
     this.stk.push(stknode);
 };
 
 interface IOffset {
-    defined: { array: boolean; offset: boolean };
-    loc: { array: any[]; offset: object; };
-    val: { type: string; val: any; };
-    global: boolean;
+    name: { array: string; offset: { val: string, empty: boolean } };   // name of array, name of offset, empty offset
+    defined: { array: boolean; offset: boolean };                       // if the offset is already defined
+    loc: { array: any[]; offset: object; };                             // memory location
+    val: { type: string; val: any; };                                   // value of the element
+    global: boolean;                                                    // if the array is global
 }

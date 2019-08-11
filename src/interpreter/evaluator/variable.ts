@@ -51,7 +51,7 @@ interface IHStore {
     type: string;   //  array (an array in PHP is actually an ordered map), object (Point), ...
     data: IBindings;  // data fields in the object
     refcount: number;   // reference-counting
-    meta?: object;  // other meta information, e.g. array's next available index
+    meta?: any;  // other meta information, e.g. array's next available index
 }
 
 /**
