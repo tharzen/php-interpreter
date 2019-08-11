@@ -6,10 +6,7 @@ A PHP interpreter written by TypeScript based on PHP 7.
 ## Description
 This interpreter accepts PHP source code and return results after executing it.
 ```typescript
-const php = `
-<?php
-    $a = 1;
-?>`;
+const php = `<?php $a = 1; ?>`;
 const interpreter = new Interpreter(php);
 interpreter.run();
 ```
@@ -47,7 +44,7 @@ Each environment has one "bind" which contains 3 connected maps: vslot, vstore, 
 - [TypeScript](https://www.typescriptlang.org/index.html)
 
 ## Contributing
-[Harry](https://github.com/eou)
+😶[Harry](https://github.com/eou)
 
 ## License
 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)

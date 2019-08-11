@@ -1,6 +1,6 @@
 /**
  * @authors https://github.com/eou/php-interpreter
- * @description This file is for definition of variable memory model.
+ * @description The definition of variable memory model.
  * The abstract memory model used by PHP for storing variables.
  * [VSlot $a *] --> [VStore object *] --> [HStore Point [VSlot $x *] [VSlot $y *]]
  *                                                          ↓             ↓
@@ -20,6 +20,11 @@ import { IMap } from "./utils/map";
  */
 interface IVSlot {
     name: string;
+    // current env can access variable in global env using `global`
+    // in this implementation the local variable set a reference to the global variable with the same name
+    // if the target global varibale does not exist, create a new one then reference to it
+    // thus the vstoreId here points to the vstore in global environment for global variables
+    global: boolean;
     vstoreId: number;   // since there is no pointer in TypeScript, we use `vstoreid` to find the correspond VStore
 }
 
@@ -33,7 +38,7 @@ interface IVSlot {
 interface IVStore {
     type: string;   // number, boolean, string, array(an array in PHP is actually an ordered map), object...
     val: number | boolean | string | null;   // only scalar type
-    hstoreId?: number;     // since there is no pointer in TypeScript, we use `hstoreid` to find the correspond HStore
+    hstoreId: number;     // since there is no pointer in TypeScript, we use `hstoreid` to find the correspond HStore
     refcount: number;   // reference-counting
 }
 
@@ -43,9 +48,10 @@ interface IVStore {
  * and is created by the Engine as needed. HStore is a container which contains VSlots.
  */
 interface IHStore {
-    type: string;   //  array(an array in PHP is actually an ordered map), object (Point), ...
-    data: IBindings | object;  // data fields in the object
+    type: string;   //  array (an array in PHP is actually an ordered map), object (Point), ...
+    data: IBindings;  // data fields in the object
     refcount: number;   // reference-counting
+    meta?: object;  // other meta information, e.g. array's next available index
 }
 
 /**

@@ -1,7 +1,7 @@
 /**
  * @authors https://github.com/eou/php-interpreter
  * @description
- * Single-linked list implementation.
+ * The file for single-linked list implementation.
  */
 export class LinkedList<T> {
     private head: INode<T> = null;

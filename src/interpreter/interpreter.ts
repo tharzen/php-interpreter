@@ -1,6 +1,6 @@
 /**
  * @authors https://github.com/eou/php-interpreter
- * @description This file is the main entry of interpreter.
+ * @description The main entry of interpreter.
  * @see https://github.com/php/php-langspec/tree/master/spec
  */
 

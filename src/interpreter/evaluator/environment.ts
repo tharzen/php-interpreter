@@ -1,6 +1,6 @@
 /**
  * @authors https://github.com/eou/php-interpreter
- * @description This file is for the definition of interperter environment.
+ * @description The definition of interperter environment.
  */
 
 import { IMap } from "./utils/map";
@@ -24,7 +24,10 @@ interface IEnv {
         _closure: number[];
         _namespace: number[];
     };                  // enclosed environments
-    stati: object;      // static
+    stati: {
+        _property: IBindings;
+        _method: object;
+    };                  // static
     meta: object;       // other information ?
 }
 
