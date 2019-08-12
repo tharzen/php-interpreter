@@ -11,7 +11,12 @@ import { Evaluator, IStkNode } from "../evaluator";
 /**
  * @description
  * subscript-expression:
- *      dereferencable-expression   [   expressionopt   ]
+ *      dereferencable-expression   [   expression_optional   ]
+ * dereferencable-expression:
+ *      variable
+ *      (   expression   )
+ *      array-creation-expression
+ *      string-literal
  * A subscript-expression designates a (possibly non-existent) element of an array or string or object of a type that implements `ArrayAccess`.
  */
 Evaluator.prototype.evaluateOffset = function() {
@@ -43,24 +48,25 @@ Evaluator.prototype.evaluateOffset = function() {
 
     if (offsetNode.node.offset) {
         // could be false, e.g. $a[] = 1;
-        this.stk.push({ node: offsetNode.node.offset, val: null, inst: "rval" });   // must be a rval since we need its value
+        this.stk.push({ node: offsetNode.node.offset, val: undefined, inst: "rval" });   // must be a rval since we need its value
     }
-    this.stk.push({ opts: offsetNode.node.what, val: null });
+    this.stk.push({ opts: offsetNode.node.what, val: undefined });
 
-    // evaluate 'what' which is the deref name, a "variable" AST node
+    // evaluate 'what' which is the deref name, a "variable" or "array" or "string" AST node
     this.evaluate();
-    const varNode = this.stk.top.value; this.stk.pop();
-    if (varNode.res.defined) {
-        // find the dereference
-        offsetVal.defined.deref = true;
-        offsetVal.global = varNode.res.global;
-        offsetVal.loc.deref = varNode.res.loc;
-        offsetVal.name.deref.type = varNode.res.type;   // could be string, array, object
-    } else {
-        // deref does not exist but if it is a array lval, the program will create a new array in next evaluation
-        // need to push the result to the stack for possible next evaluation
-        // this.stk.push({ res: offsetVal, val: null });
-        // return;
+    const derefNode = this.stk.top.value; this.stk.pop();
+    if (derefNode.val !== undefined || (derefNode.res !== undefined && derefNode.res.defined)) {
+        // get the dereference
+        if (derefNode.res !== undefined && derefNode.res.defined) {
+            // has already stored in memory
+            offsetVal.defined.deref = true;
+            offsetVal.global = derefNode.res.global;
+            offsetVal.loc.deref = derefNode.res.loc;
+            offsetVal.name.deref.type = derefNode.res.type;   // could be string, array, object
+        } else {
+            // could be a temporary value, e.g. array, string
+            offsetVal.defined.deref = true;
+        }
     }
 
     // evaluate 'offset' which is a key in the deref, and it should be integer or string

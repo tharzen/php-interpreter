@@ -14,6 +14,9 @@ import { IMap } from "../utils/map";
  * @example
  * Array("abc" => "123", 1 => 123, ++$c  => "b");
  * [4, 6 => "123"];
+ * array-creation-expression:
+ *      array   (   array-initializer_optional   )
+ *      [   array-initializer_optional   ]
  */
 Evaluator.prototype.evaluateArray = function() {
     const arrayNode = this.stk.top.value; this.stk.pop();
@@ -53,7 +56,7 @@ Evaluator.prototype.evaluateArray = function() {
          */
         if (item.kind === "entry") {
             // key
-            this.stk.push({ node: item.key, val: null });
+            this.stk.push({ node: item.key, val: undefined });
             this.evaluate();    // key could be number, string, boolean, unary, null(NULL)
             const keyNode = this.stk.top.value; this.stk.pop();
             let key = keyNode.val;
@@ -82,13 +85,13 @@ Evaluator.prototype.evaluateArray = function() {
             }
 
             // value
-            this.stk.push({ node: item.value, val: null });
+            this.stk.push({ node: item.value, val: undefined });
             this.evaluate();
             const valNode = this.stk.top.value; this.stk.pop();
             const val = valNode.val;
             arrayVal.val[key] = val;
         } else {
-            this.stk.push({ node: item, val: null });
+            this.stk.push({ node: item, val: undefined });
             this.evaluate();
             const valNode = this.stk.top.value; this.stk.pop();
             // just like the right value in assignment which has different types
@@ -99,7 +102,7 @@ Evaluator.prototype.evaluateArray = function() {
     }
 
     // need to push the result to the stack for possible next evaluation
-    const stknode: IStkNode = { res: arrayVal, val: null };
+    const stknode: IStkNode = { res: arrayVal, val: undefined };
     this.stk.push(stknode);
 };
 

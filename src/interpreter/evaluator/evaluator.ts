@@ -83,7 +83,7 @@ class Evaluator {
 Evaluator.prototype.run = function() {
     // the root node of AST is "Program", its children field contains the expressions we'll evaluate
     this.ast.children.forEach((child: Node) => {
-        const stknode: IStkNode = { node: child, val: null };
+        const stknode: IStkNode = { node: child, val: undefined };
         this.stk.push(stknode);
         this.evaluate();
     });
@@ -95,7 +95,7 @@ Evaluator.prototype.evaluate = function() {
     if (expr.kind === "expressionstatement") {
         switch (expr.expression.kind) {
             case "assign": {
-                const stknode: IStkNode = { node: expr.expression, val: null };
+                const stknode: IStkNode = { node: expr.expression, val: undefined };
                 this.stk.push(stknode);
                 this.evaluateAssign();
                 break;
@@ -110,7 +110,7 @@ Evaluator.prototype.evaluate = function() {
         this.stk.push(stknode);
     } else if (expr.kind === "number") {
         const stknode: IStkNode = {
-            val: Number(expr.value),    // 0x539 = 02471 = 0b10100111001 = 1337e0
+            val: Number(expr.value),    // 0x539 == 02471 == 0b10100111001 == 1337e0
         };
         this.stk.push(stknode);
     } else if (expr.kind === "string") {
@@ -119,11 +119,11 @@ Evaluator.prototype.evaluate = function() {
         };
         this.stk.push(stknode);
     } else if (expr.kind === "assign") {
-        const stknode: IStkNode = { node: expr, val: null };
+        const stknode: IStkNode = { node: expr, val: undefined };
         this.stk.push(stknode);
         this.evaluateAssign();
     } else if (expr.kind === "variable") {
-        const stknode: IStkNode = { node: expr, val: null };
+        const stknode: IStkNode = { node: expr, val: undefined };
         this.stk.push(stknode);
         this.evaluateVariable();
     } else {

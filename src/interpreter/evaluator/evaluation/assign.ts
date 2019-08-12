@@ -2,6 +2,7 @@
  * @authors https://github.com/eou/php-interpreter
  * @description The file for assignment evaluation
  * @see https://github.com/php/php-langspec/blob/master/spec/04-basic-concepts.md#assignment
+ *      https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#assignment-operators
  */
 
 import util = require("util");  // for test
@@ -10,6 +11,22 @@ import { Evaluator, IStkNode } from "../evaluator";
 
 /**
  * @example
+ * assignment-expression:
+ *      conditional-expression
+ *      simple-assignment-expression
+ *      compound-assignment-expression
+ *
+ * conditional-expression:
+ *      coalesce-expression
+ *      conditional-expression   ?   expressionopt   :   coalesce-expression
+ * simple-assignment-expression:
+ *      variable   =   assignment-expression
+ *      list-intrinsic   =   assignment-expression
+ * compound-assignment-expression:
+ *      variable   compound-assignment-operator   assignment-expression
+ * compound-assignment-operator: one of
+ *      **=   *=   /=   %=   +=   -=   .=   <<=   >>=   &=   ^=   |=
+ *
  * $a = 1;
  * $a += 1;
  * $a = $b;
@@ -20,7 +37,8 @@ import { Evaluator, IStkNode } from "../evaluator";
  * a::$x = 1;   staticlookup, find in class.static
  * For the right side, there are 8 main types in PHP:
  *      boolean, interger, double, string;
- *      array, object;
+ *      array,
+ *      object;
  *      resource;
  *      null;
  * First 4 are scalar type which are only simple values
