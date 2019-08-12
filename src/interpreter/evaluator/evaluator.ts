@@ -34,8 +34,8 @@ class Evaluator {
 
     /**
      * @description
-     * The basic assignment operator is "="
-     * There are "combined operators" for all of the binary arithmetic, array union and string operators
+     * The basic assignment operator is "=".
+     * And there are "combined operators" for all of the binary arithmetic, array union and string operators
      * @file
      * evaluator/evaluation/assign.ts
      */
@@ -59,7 +59,7 @@ class Evaluator {
 
     /**
      * @description
-     * Evaluate the offset of the Array
+     * Evaluate the offset of the array or string or object
      * @file
      * evaluator/evaluation/offset.ts
      */
@@ -110,7 +110,7 @@ Evaluator.prototype.evaluate = function() {
         this.stk.push(stknode);
     } else if (expr.kind === "number") {
         const stknode: IStkNode = {
-            val: Number(expr.value),
+            val: Number(expr.value),    // 0x539 = 02471 = 0b10100111001 = 1337e0
         };
         this.stk.push(stknode);
     } else if (expr.kind === "string") {
@@ -136,7 +136,7 @@ Evaluator.prototype.evaluate = function() {
  * Node in the execution stack. It could be a AST node, an instruction, an operator and a value
  */
 export interface IStkNode {
-    inst?: string;  // instruction
+    inst?: string;  // instruction, e.g. lval, rval, endOfLoop,
     node?: Node;    // AST node
     opts?: string;  // operator e.g. =, +
     res?: any;      // results from evaluating the AST nodes

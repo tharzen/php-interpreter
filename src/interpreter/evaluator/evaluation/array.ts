@@ -3,6 +3,7 @@
  * @description The file for array evaluation
  * @see https://github.com/php/php-langspec/blob/master/spec/12-arrays.md
  *      https://www.php.net/manual/en/language.types.array.php
+ *      https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#array-creation-operator
  */
 
 import { Node } from "../../php-parser/src/ast/node";
@@ -17,7 +18,12 @@ import { IMap } from "../utils/map";
 Evaluator.prototype.evaluateArray = function() {
     const arrayNode = this.stk.top.value; this.stk.pop();
     if (arrayNode.node.kind !== "array") {
-        throw new Error("Evaluate wrong AST node: " + arrayNode.node.kind + ", should be array");
+        throw new Error("Eval Error: Evaluate wrong AST node: " + arrayNode.node.kind + ", should be array");
+    }
+
+    // `[1,2] = ...;` is illegal
+    if (arrayNode.inst !== undefined && arrayNode.inst === "lval") {
+        throw new Error("Fatal error: Assignments can only happen to writable values.");
     }
 
     const arrayVal: IArray = {
@@ -58,7 +64,8 @@ Evaluator.prototype.evaluateArray = function() {
                     break;
                 }
                 case "string": {
-                    const validDecInt = /^(|0|-[1-9][0-9]*)$/;    // 010 × | 10.0 × | -10 √
+                    // check if it could be converted to number
+                    const validDecInt = /^(|[-]?0|-[1-9][0-9]*)$/;    // 010 × | 10.0 × | -10 √ | -0 √
                     if (validDecInt.test(key)) {
                         key = Number(key);
                         arrayVal.idx = key >= arrayVal.idx ? key + 1 : arrayVal.idx;
@@ -91,7 +98,7 @@ Evaluator.prototype.evaluateArray = function() {
         }
     }
 
-    // need to push the value to the stack for possible next evaluation
+    // need to push the result to the stack for possible next evaluation
     const stknode: IStkNode = { res: arrayVal, val: null };
     this.stk.push(stknode);
 };

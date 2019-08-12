@@ -32,12 +32,12 @@ Evaluator.prototype.evaluateAssign = function() {
     // split the top element into seperate steps, | left => operator => right |
     const assignNode = this.stk.top.value; this.stk.pop();
     if (assignNode.node.kind !== "assign") {
-        throw new Error("Evaluate wrong AST node: " + assignNode.node.kind + ", should be assign");
+        throw new Error("Eval Error: Evaluate wrong AST node: " + assignNode.node.kind + ", should be assign");
     }
 
-    this.stk.push({ node: assignNode.node.left });
-    this.stk.push({ opts: assignNode.node.operator });
-    this.stk.push({ node: assignNode.node.right });
+    this.stk.push({ node: assignNode.node.left, val: null, inst: "lval" }); // lvalue: an expression that designates a location that can store a value
+    this.stk.push({ opts: assignNode.node.operator, val: null, inst: "opts" });
+    this.stk.push({ node: assignNode.node.right, val: null, inst: "rval" });    // right val, we simply need its value
 
     this.evaluate();    // evaluate right expressions and then push the value back into stack
     const rightNode = this.stk.top.value; this.stk.pop();

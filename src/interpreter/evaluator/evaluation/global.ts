@@ -14,7 +14,7 @@ import { Evaluator } from "../evaluator";
 Evaluator.prototype.evaluateGlobal = function() {
     const globalNode = this.stk.top.value; this.stk.pop();
     if (globalNode.node.kind !== "global") {
-        throw new Error("Evaluate wrong AST node: " + globalNode.node.kind + ", should be global");
+        throw new Error("Eval Error: Evaluate wrong AST node: " + globalNode.node.kind + ", should be global");
     }
 
     const varEnv = this.env.env[this.env.idx];

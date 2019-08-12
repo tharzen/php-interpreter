@@ -19,7 +19,7 @@ import { IMap } from "./utils/map";
  * A VSlot contains a pointer to a VStore.
  */
 interface IVSlot {
-    name: string;
+    name: number | string;  // if it is a offset in an array, it could be integer or string
     // current env can access variable in global env using `global`
     // in this implementation the local variable set a reference to the global variable with the same name
     // if the target global varibale does not exist, create a new one then reference to it

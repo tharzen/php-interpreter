@@ -32,8 +32,14 @@ Each environment has one "bind" which contains 3 connected maps: vslot, vstore, 
 
 ### Development
 - variable
-   - array (ordered map)
-- assignment
+  - variable `$` ✔
+  - global `global` ✔
+  - array `Array()` `[]` ✔
+- expression
+  - subscript `[]`
+    - array
+    - string
+    - class
 - loop
 - conditional
 - function
