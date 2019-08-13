@@ -1,8 +1,11 @@
 /**
- * @authors https://github.com/eou/php-interpreter
- * @description The file for assignment evaluation
- * @see https://github.com/php/php-langspec/blob/master/spec/04-basic-concepts.md#assignment
- *      https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#assignment-operators
+ * @authors
+ * https://github.com/eou/php-interpreter
+ * @description
+ * The file for assignment evaluation
+ * @see
+ * https://github.com/php/php-langspec/blob/master/spec/04-basic-concepts.md#assignment
+ * https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#assignment-operators
  */
 
 import util = require("util");  // for test

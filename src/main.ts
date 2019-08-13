@@ -1,6 +1,8 @@
 /**
- * @authors https://github.com/eou/php-interpreter
- * @description The main entry for interpreting PHP.
+ * @authors
+ * https://github.com/eou/php-interpreter
+ * @description
+ * The main entry for interpreting PHP.
  */
 import { Interpreter } from "./interpreter/interpreter";
 

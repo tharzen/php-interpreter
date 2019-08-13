@@ -1,22 +1,26 @@
 /**
- * @authors https://github.com/eou/php-interpreter
- * @description The file for array evaluation
- * @see https://github.com/php/php-langspec/blob/master/spec/12-arrays.md
- *      https://www.php.net/manual/en/language.types.array.php
- *      https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#array-creation-operator
+ * @authors
+ * https://github.com/eou/php-interpreter
+ * @description
+ * The file for array evaluation
+ * @see
+ * https://github.com/php/php-langspec/blob/master/spec/12-arrays.md
+ * https://www.php.net/manual/en/language.types.array.php
+ * https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#array-creation-operator
  */
 
 import { Node } from "../../php-parser/src/ast/node";
-import { Evaluator, IStkNode } from "../evaluator";
-import { IMap } from "../utils/map";
+import { Evaluator, IArray, IStkNode } from "../evaluator";
 
 /**
  * @example
- * Array("abc" => "123", 1 => 123, ++$c  => "b");
- * [4, 6 => "123"];
  * array-creation-expression:
  *      array   (   array-initializer_optional   )
  *      [   array-initializer_optional   ]
+ *
+ * `ARRAY` keyword is non-case-sensitive in PHP
+ * Array("abc" => "123", 1 => 123, ++$c  => "b");
+ * [4, 6 => "123"];
  */
 Evaluator.prototype.evaluateArray = function() {
     const arrayNode = this.stk.top.value; this.stk.pop();
@@ -24,14 +28,13 @@ Evaluator.prototype.evaluateArray = function() {
         throw new Error("Eval Error: Evaluate wrong AST node: " + arrayNode.node.kind + ", should be array");
     }
 
-    // `[1,2] = ...;` is illegal
-    if (arrayNode.inst !== undefined && arrayNode.inst === "lval") {
+    // `[1,2] = ...;` is illegal because this is a temporary value not in memory
+    if (arrayNode.inst !== undefined && arrayNode.inst === "WRITE") {
         throw new Error("Fatal error: Assignments can only happen to writable values.");
     }
 
     const arrayVal: IArray = {
         idx: 0,
-        name: arrayNode.node.name,
         val: {},
     };
 
@@ -56,10 +59,13 @@ Evaluator.prototype.evaluateArray = function() {
          */
         if (item.kind === "entry") {
             // key
-            this.stk.push({ node: item.key, val: undefined });
-            this.evaluate();    // key could be number, string, boolean, unary, null(NULL)
+            this.stk.push({
+                inst: "READ",
+                node: item.key,
+            });
+            this.evaluate();
             const keyNode = this.stk.top.value; this.stk.pop();
-            let key = keyNode.val;
+            let key = keyNode.val;  // key could be number, string, boolean, unary, null(NULL)
             switch (typeof key) {
                 case "boolean": {
                     key = Number(key);
@@ -68,7 +74,7 @@ Evaluator.prototype.evaluateArray = function() {
                 }
                 case "string": {
                     // check if it could be converted to number
-                    const validDecInt = /^(|[-]?0|-[1-9][0-9]*)$/;    // 010 × | 10.0 × | -10 √ | -0 √
+                    const validDecInt = /^(|[-]?0|-[1-9][0-9]*)$/;    // "010" × | "10.0" × | "-10" √ | "-0" √ | "+0" ×
                     if (validDecInt.test(key)) {
                         key = Number(key);
                         arrayVal.idx = key >= arrayVal.idx ? key + 1 : arrayVal.idx;
@@ -85,30 +91,30 @@ Evaluator.prototype.evaluateArray = function() {
             }
 
             // value
-            this.stk.push({ node: item.value, val: undefined });
+            this.stk.push({
+                inst: "READ",
+                node: item.value,
+            });
             this.evaluate();
             const valNode = this.stk.top.value; this.stk.pop();
             const val = valNode.val;
             arrayVal.val[key] = val;
         } else {
-            this.stk.push({ node: item, val: undefined });
+            this.stk.push({
+                inst: "READ",
+                node: item,
+            });
             this.evaluate();
             const valNode = this.stk.top.value; this.stk.pop();
-            // just like the right value in assignment which has different types
-            // this is a temporary array model, we'll handle different objects when this array is saved to memory
-            const val = valNode.val;
+            const val = valNode.val;    // scalar, non-scalar
             arrayVal.val[arrayVal.idx] = val;
+            arrayVal.idx += 1;
         }
     }
 
     // need to push the result to the stack for possible next evaluation
-    const stknode: IStkNode = { res: arrayVal, val: undefined };
+    const stknode: IStkNode = {
+        val: arrayVal,
+    };
     this.stk.push(stknode);
 };
-
-// Array information extracted from the PHP source code
-interface IArray {
-    name: string;       // array name
-    val: IMap<any>;    // array data
-    idx: number;      // array number index
-}

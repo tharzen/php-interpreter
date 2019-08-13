@@ -1,6 +1,8 @@
 /**
- * @authors https://github.com/eou/php-interpreter
- * @description The definition of interperter environment.
+ * @authors
+ * https://github.com/eou/php-interpreter
+ * @description
+ * The definition of interperter environment.
  */
 
 import { IMap } from "./utils/map";

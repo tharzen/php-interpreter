@@ -1,8 +1,11 @@
 /**
- * @authors https://github.com/eou/php-interpreter
- * @description The file for offset evaluation (an element in an array)
- * @see https://www.php.net/manual/en/arrayaccess.offsetset.php
- *      https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#subscript-operator
+ * @authors
+ * https://github.com/eou/php-interpreter
+ * @description
+ * The file for offset evaluation (an element in an array)
+ * @see
+ * https://www.php.net/manual/en/arrayaccess.offsetset.php
+ * https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#subscript-operator
  */
 
 import { Node } from "../../php-parser/src/ast/node";

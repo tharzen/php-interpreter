@@ -24,7 +24,7 @@ interface IVSlot {
     // in this implementation the local variable set a reference to the global variable with the same name
     // if the target global varibale does not exist, create a new one then reference to it
     // thus the vstoreId here points to the vstore in global environment for global variables
-    global: boolean;
+    scope: string;      // global, public, protected, private
     vstoreId: number;   // since there is no pointer in TypeScript, we use `vstoreid` to find the correspond VStore
 }
 
@@ -51,7 +51,7 @@ interface IHStore {
     type: string;   //  array (an array in PHP is actually an ordered map), object (Point), ...
     data: IBindings;  // data fields in the object
     refcount: number;   // reference-counting
-    meta?: any;  // other meta information, e.g. array's next available index
+    meta?: any;  // other meta information for optimization, e.g. array's next available index, object's class
 }
 
 /**
@@ -86,4 +86,11 @@ export interface IBindings {
     vslot: IVSlotMap;   // name     => name                 + vstoreid
     vstore: IVStoreMap; // vstoreid => vstore, type, val    + hstoreid
     hstore: IHStoreMap; // hstoreid => hstore => data
+}
+
+export interface ILocation {
+    global: boolean;
+    vslotName: string;
+    vstoreId: number;
+    hstoreId: number;
 }
