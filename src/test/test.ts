@@ -19,15 +19,15 @@
 // const ast = parser.parseCode(phpFile.toString());
 // // console.log(util.inspect(parser, { depth: null }));
 // console.log(util.inspect(ast, { depth: null }));
-interface ITest {
-    a: any[];
-}
 
-const ar = [[[1]]];
-
-const a: ITest = { a: [["abc", 3, 4]]  };
-
-const b: ITest = { a: [[1, 2], [3, 4], ar, "123"] };
-
+let a = { b: { key: { val : 2}}, x : { bug: { e: "123" }, bug2: { d : ""} }};
+// let c = { ... a, b: { ... a.b}};
+let c = JSON.parse(JSON.stringify(a));
 console.log(a);
-console.log(b);
+console.log(c);
+c.b.key.val = 666;
+console.log(a);
+console.log(c);
+c.x.bug.e = "???";
+console.log(a);
+console.log(c);

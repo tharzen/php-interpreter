@@ -5,10 +5,10 @@
 import { IMap } from "./map";
 
 const map: IMap<number> = {};
-map.a = 1;
-map[123] = 456;
+map.z = 1;
+map["a"] = 456;
 console.log(map);
-console.log(map[123]);
+console.log(map["a"]);
 console.log(Object.keys(map).length);
 
 // logical delete
@@ -24,4 +24,9 @@ console.log(map);
 let a = map[666];
 console.log(a);
 a = 777;
+console.log(map);
+
+map[1] = 999;
+console.log(map);
+map[0] = 888;
 console.log(map);

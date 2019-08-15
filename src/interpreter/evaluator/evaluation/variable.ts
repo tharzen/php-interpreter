@@ -10,6 +10,7 @@
 
 import util = require("util");  // for test
 import { Evaluator, IStkNode } from "../evaluator";
+import { getValue, ILocation  } from "../memory";
 
 /**
  * @example
@@ -31,34 +32,32 @@ Evaluator.prototype.evaluateVariable = function() {
     // find the variable in current env
     let varEnv = this.env.env[this.env.idx];
     const vslot = varEnv.bind.vslot[varNode.node.name];
+    let vstore;
+    let hstoreId;
     if (vslot !== undefined) {
         // check if it is global
         if (vslot.scope === "global") {
             varEnv = this.env.env[0];
         }
-        const vstore = varEnv.bind.vstore[vslot.vstoreId];
-        const hstore = vstore.hstoreId ? vstore.hstoreId : null;
+        vstore = varEnv.bind.vstore[vslot.vstoreId];
+        hstoreId = vstore.hstoreId ? vstore.hstoreId : null;
     }
 
     const stknode: IStkNode = {};
     if (varNode.inst === "READ") {
         // need its value
-        if (vstore.)
+        stknode.val = getValue(varEnv.bind, varNode.node.name);
     } else if (varNode.inst === "WRITE") {
-        // need its memory
-
+        // need its memory location
+        const loc: ILocation = {
+            hstoreId,
+            scope: vslot.scope,
+            vslotName: varNode.node.name,
+            vstoreId: vslot.vstoreId,
+        };
+        stknode.loc = [loc];
     }
 
     // need to push the result to the stack for possible next evaluation
     this.stk.push(stknode);
 };
-
-// Variable information extracted from the variable model
-interface IVar {
-    name: string;       // variable name
-    type: string;       // variable type
-    loc: any[];         // variable position: [vslotName, vstoreId, hstoreId]
-    val: any;           // variable value
-    global: boolean;    // variable scope
-    defined: boolean;   // variable existence
-}

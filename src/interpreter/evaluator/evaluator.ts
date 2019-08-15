@@ -5,23 +5,24 @@
  * The main entry of evaluator.
  */
 
-import { Node } from "../php-parser/src/ast/node";
+import { Node as ASTNode } from "../php-parser/src/ast/node";
 import { AST } from "../php-parser/src/index";
 import { Env } from "./environment";
-import { IMap } from "./utils/map";
+import { ILocation } from "./memory";
 import { Stack } from "./utils/stack";
-import { ILocation } from "./variable";
+
+// ██████████████████████████████████████████████████████████████████████████████████████████████████████████
+// ██████████████████████████████████████████████ EVALUATOR █████████████████████████████████████████████████
+// ██████████████████████████████████████████████████████████████████████████████████████████████████████████
 
 /**
  * @param {AST}     ast - abstract syntax tree
  * @param {Env}     env - execution environment
- * @param {Node}    exp - current execute expressions (AST node)
  * @param {Stack}   stk - stack keeping a log of the functions which are called during the execution
  */
 export class Evaluator {
     public ast: AST;
     public env: Env;
-    public exp: Node;
     public stk: Stack<IStkNode>;
 
     /**
@@ -46,7 +47,7 @@ export class Evaluator {
 
     /**
      * @description
-     * Convert array on PHP to map object in the variable system
+     * Evaluate array
      * @file
      * evaluator/evaluation/array.ts
      */
@@ -102,7 +103,7 @@ Evaluator.prototype.run = function() {
 
 Evaluator.prototype.evaluate = function() {
     // each time evaluate top element of stack
-    const expr: Node = this.stk.top.value.node; this.stk.pop();
+    const expr: ASTNode = this.stk.top.value.node; this.stk.pop();
     if (expr.kind === "expressionstatement") {
         switch (expr.expression.kind) {
             // `[1,2];` `"abc";` `1.6;` actually do nothing before the sequence point so don't need to evaluate
@@ -188,27 +189,5 @@ export interface IStkNode {
     val?: any;           // Any AST nodes which can be evaluated to a value should store its value here, e.g. 1, true, "abc", { ... }
     loc?: ILocation[];   // Any AST nodes which can be found in memory should store its location here
     inst?: string;       // instructions, e.g. READ, WRITE, END
-    node?: Node;         // AST node
-}
-
-/**
- * @description
- * Array model extracted from PHP
- * @see 
- * https://github.com/php/php-langspec/blob/master/spec/12-arrays.md
- */
-export interface IArray {
-    val: IMap<any>;     // array data
-    idx: number;        // optimization: array next available index
-}
-
-/**
- * @description
- * Object model extracted from PHP
- * @see
- * https://www.php.net/manual/en/language.types.object.php
- * https://www.php.net/manual/en/language.oop5.php
- */
-export interface IObject {
-    
+    node?: ASTNode;      // AST node
 }

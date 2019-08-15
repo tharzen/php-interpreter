@@ -10,7 +10,8 @@
  */
 
 import { Node } from "../../php-parser/src/ast/node";
-import { Evaluator, IArray, IStkNode } from "../evaluator";
+import { Evaluator, IStkNode } from "../evaluator";
+import { IArray } from "../memory";
 
 /**
  * @example
@@ -35,7 +36,8 @@ Evaluator.prototype.evaluateArray = function() {
 
     const arrayVal: IArray = {
         idx: 0,
-        val: {},
+        key: [],
+        val: [],
     };
 
     for (let i = 0, item: Node = arrayNode.node.items[i]; i < arrayNode.node.items.length; i++) {
@@ -98,7 +100,8 @@ Evaluator.prototype.evaluateArray = function() {
             this.evaluate();
             const valNode = this.stk.top.value; this.stk.pop();
             const val = valNode.val;
-            arrayVal.val[key] = val;
+            arrayVal.key.push(key);
+            arrayVal.val.push(val);
         } else {
             this.stk.push({
                 inst: "READ",
@@ -106,8 +109,9 @@ Evaluator.prototype.evaluateArray = function() {
             });
             this.evaluate();
             const valNode = this.stk.top.value; this.stk.pop();
-            const val = valNode.val;    // scalar, non-scalar
-            arrayVal.val[arrayVal.idx] = val;
+            const val = valNode.val;    // number, string, boolean, null, IArray, IObject
+            arrayVal.key.push(arrayVal.idx);
+            arrayVal.val.push(val);
             arrayVal.idx += 1;
         }
     }

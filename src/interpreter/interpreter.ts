@@ -4,11 +4,13 @@
  * @see https://github.com/php/php-langspec/tree/master/spec
  */
 
-import "./evaluator/evaluation/assign";
 import { Evaluator } from "./evaluator/evaluator";
-import { IMap } from "./evaluator/utils/map";
 import { AST } from "./php-parser/src/ast";
 import * as Parser from "./php-parser/src/index.js";
+
+// ██████████████████████████████████████████████████████████████████████████████████████████████████████████
+// ██████████████████████████████████████████████ INTERPRETER ███████████████████████████████████████████████
+// ██████████████████████████████████████████████████████████████████████████████████████████████████████████
 
 /**
  * @param {object}     ast - abstract syntax tree
@@ -21,7 +23,7 @@ import * as Parser from "./php-parser/src/index.js";
 class Interpreter {
     public ast: AST;
     public evl: Evaluator;
-    public ini: IMap<boolean>;      // setting => true / false
+    public ini: Map<string, boolean>;      // setting (string) => boolean
     public res: string;
     public src: string;
     public run: () => void;
