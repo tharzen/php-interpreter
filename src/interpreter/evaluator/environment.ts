@@ -29,7 +29,8 @@ export class Env {
         _trait: Map<string, IClass>;        // as of PHP 5.4
         _interface: Map<string, IInterface>;
     };
-    public children: Env[];                 // sub environment
+    public outEnv: number;                  // outer environment
+    public subEnv: number[];                // sub environment, evaluator.env.get(...)
 }
 
 /**

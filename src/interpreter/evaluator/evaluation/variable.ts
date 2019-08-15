@@ -30,28 +30,29 @@ Evaluator.prototype.evaluateVariable = function() {
     }
 
     // find the variable in current env
-    let varEnv = this.env.env[this.env.idx];
-    const vslot = varEnv.bind.vslot[varNode.node.name];
+    let varEnv = this.env.get(this.idx);
+    const vslot = varEnv.heap._var.vslot.get(varNode.node.name);
     let vstore;
     let hstoreId;
     if (vslot !== undefined) {
         // check if it is global
-        if (vslot.scope === "global") {
-            varEnv = this.env.env[0];
+        if (vslot.modifiers[0]) {
+            varEnv = this.env.get(0);
         }
-        vstore = varEnv.bind.vstore[vslot.vstoreId];
-        hstoreId = vstore.hstoreId ? vstore.hstoreId : null;
+        vstore = varEnv.heap._var.vstore.get(vslot.vstoreId);
+        hstoreId = vstore.hstoreId ? vstore.hstoreId : undefined;
     }
 
     const stknode: IStkNode = {};
     if (varNode.inst === "READ") {
-        // need its value
-        stknode.val = getValue(varEnv.bind, varNode.node.name);
+        // get its value
+        // could be boolean, number, string, IArray, IObject, closure (IFunction), null
+        stknode.val = getValue(varEnv.heap._var, varNode.node.name);
     } else if (varNode.inst === "WRITE") {
-        // need its memory location
+        // get its memory location
         const loc: ILocation = {
             hstoreId,
-            scope: vslot.scope,
+            idx: vslot.modifiers[0] ? 0 : this.idx,
             vslotName: varNode.node.name,
             vstoreId: vslot.vstoreId,
         };

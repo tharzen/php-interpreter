@@ -74,10 +74,13 @@ export interface IBindings {
 
 /**
  * @description
- * Memory location model
+ * Memory location model, find variables in specific IBindings
  */
 export interface ILocation {
-    global: boolean;
+    // nested object, e.g. $a->x->y
+    // global: env.get(0).heap._var => $a; $a._property => $a->x; x._property => $a->x->y;
+    parent?: ILocation;
+    idx: number;
     vslotName: string;
     vstoreId: number;
     hstoreId: number;
@@ -179,7 +182,7 @@ export function getValue(bind: IBindings, vslotName: string) {
     const vstore = bind.vstore.get(vslot.vstoreId);
     const type = vstore.type;
     // scalar type
-    if (type !== "array" && type !== "object") {
+    if (type === "boolean" || type === "number" || type === "string") {
         return vstore.val;
     } else if (type === "array") {
         const array: IArray = {

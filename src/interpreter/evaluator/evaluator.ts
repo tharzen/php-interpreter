@@ -17,13 +17,16 @@ import { Stack } from "./utils/stack";
 
 /**
  * @param {AST}     ast - abstract syntax tree
- * @param {Env}     env - execution environment
+ * @param {Map}     env - environments map
+ * @param {number}  idx - current environment index
  * @param {Stack}   stk - stack keeping a log of the functions which are called during the execution
  */
 export class Evaluator {
     public ast: AST;
-    public env: Env;
+    public env: Map<number, Env>;
+    public idx: number;
     public stk: Stack<IStkNode>;
+    public heap:
 
     /**
      * @description
@@ -87,7 +90,9 @@ export class Evaluator {
 
     constructor(ast: AST) {
         this.ast = ast;
-        this.env = new Env();
+        this.env = new Map();
+        this.env.set(0, new Env());     // global environment
+        this.idx = 0;
         this.stk = new Stack<IStkNode>();
     }
 }

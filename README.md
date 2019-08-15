@@ -37,7 +37,7 @@ Generally, the evaluator evaluates statements and expressions which cause some s
 
 For evaluating expressions, the general idea is to put a AST node into stack and then pop it, evaluate it. 
 
-After evaluation, evaluator will push the result node into stack for next possible evaluation. Thus the problem here is that the expression is blind to the evaluation process and next possible result node in the stack. It is necessary to design a consistent node API of stack for evaluation. And at the same time, the AST node itself can be evaluated to many information for next step.
+After evaluation, evaluator will push the result node into stack for next possible evaluation. The problem here is that the expression is blind to the evaluation process and next possible result node in the stack. It is necessary to design a consistent node API of stack for evaluation. And at the same time, the AST node itself can be evaluated to many information for next step.
 
 For example, in `$a = $b;`, `$a` and `$b` are both `variable` AST node. But the memory location of `$a` and the value of `$b` are required. When the expression pushes `$a` into stack, it should tell stack what it wants is `$a`'s memory location. And then the stack will pop it, evaluate it, pushes a result node with `$a`'s memory location. Same thing goes for `$b`'s value. After the expression receives the value of `b` and the memory location of `a`, it will cause side effect in the environment: modify variable's value. During these evaluations, evaluator will access both `$a` and `$b`'s storage location but return different evaluation results.
 
