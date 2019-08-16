@@ -74,20 +74,6 @@ export interface IBindings {
 
 /**
  * @description
- * Memory location model, find variables in specific IBindings
- */
-export interface ILocation {
-    // nested object, e.g. $a->x->y
-    // global: env.get(0).heap._var => $a; $a._property => $a->x; x._property => $a->x->y;
-    parent?: ILocation;
-    idx: number;
-    vslotName: string;
-    vstoreId: number;
-    hstoreId: number;
-}
-
-/**
- * @description
  * Array type abstract model
  * [VSlot $a *] --> [VStore array *] --> [HStore array [VSlot 0 *] [VSlot 'B' *]]
  *                                                        ↓            ↓
@@ -98,7 +84,7 @@ export interface ILocation {
  */
 export interface IArray {
     type: string;           // array
-    elt: Map<string, any>;  // array elements
+    elt: Map<string | number, any>;  // array elements
     idx: number;            // optimization: array next available index
 }
 
@@ -167,6 +153,20 @@ export interface IClass {
     _extend: string;                // parent class
     _property: IBindings;
     _method: Map<string, IMethod>;   // name => function
+}
+
+/**
+ * @description
+ * Memory location model, find variables in specific IBindings
+ */
+export interface ILocation {
+    // nested object, e.g. $a->x->y
+    // global: env.get(0).heap._var => $a; $a._property => $a->x; x._property => $a->x->y;
+    parent?: ILocation;
+    idx: number;
+    vslotName: string;
+    vstoreId: number;
+    hstoreId: number;
 }
 
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████

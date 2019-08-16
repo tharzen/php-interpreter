@@ -27,18 +27,18 @@ Evaluator.prototype.evaluateGlobal = function() {
         throw new Error("Eval Error: Evaluate wrong AST node: " + globalNode.node.kind + ", should be global");
     }
 
-    const varEnv = this.env.env[this.env.idx];
-    const globalEnv = this.env.env[0];
+    const varEnv = this.env.get(this.idx);
+    const globalEnv = this.env.get(0);
     globalNode.node.items.forEach((varname: Node) => {
-        let globalVslot = globalEnv.bind.vslot[varname];
+        let globalVslot = globalEnv.heap._var.vslot[varname];
         if (globalVslot === undefined) {
             // if this global variable does not exist, create a new one
             globalVslot = {
                 name: varname,
                 scope: "global",
-                vstoreId: Object.keys(globalEnv.bind.vstore).length,
+                vstoreId: Object.keys(globalEnv.heap._var.vstore).length,
             };
-            globalEnv.bind.vstore[globalVslot.vstoreId] = {
+            globalEnv.heap._var.vstore[globalVslot.vstoreId] = {
                 hstoreId: null,
                 refcount: 1,
                 type: null,
@@ -46,7 +46,7 @@ Evaluator.prototype.evaluateGlobal = function() {
             };
         }
 
-        let vslot = varEnv.bind.vslot[varname];
+        let vslot = varEnv.heap._var.vslot[varname];
         if (vslot === undefined) {
             // if this local variable does not exist, create a new one
             vslot = {

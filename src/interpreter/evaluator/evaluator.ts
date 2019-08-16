@@ -26,7 +26,6 @@ export class Evaluator {
     public env: Map<number, Env>;
     public idx: number;
     public stk: Stack<IStkNode>;
-    public heap:
 
     /**
      * @description

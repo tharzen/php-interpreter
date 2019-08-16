@@ -2,7 +2,7 @@
  * @authors
  * https://github.com/eou/php-interpreter
  * @description
- * The file for offset evaluation (an element in an array)
+ * The file for offset evaluation (an element in an array or a string)
  * @see
  * https://www.php.net/manual/en/arrayaccess.offsetset.php
  * https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#subscript-operator
@@ -29,8 +29,20 @@ Evaluator.prototype.evaluateOffset = function() {
     }
 
     // `$a = $b[];`, `$b[$a[]] = 1;` is illegal
-    if (offsetNode.inst !== undefined && offsetNode.inst === "rval" && !offsetNode.node.offset) {
+    if ((offsetNode.inst === undefined || offsetNode.inst !== "WRITE")
+        && !offsetNode.node.offset) {
         throw new Error("Fatal error:  Cannot use [] for reading.");
+    }
+
+    const inst = offsetNode.inst;   // READ or WRITE
+    if (inst === "READ") {
+        // if `$a[1][2]` doesnt exist, it will print notice: Undefined variable: a and then return null
+
+    } else if (inst === "WRITE") {
+        // if `$a[][1][0]` doesnt exist, it will create a new array then assgin null to it
+
+    } else {
+        throw new Error("Eval error: " + inst +  " instruction in offset Node");
     }
 
     const offsetVal: IOffset = {
@@ -51,9 +63,9 @@ Evaluator.prototype.evaluateOffset = function() {
 
     if (offsetNode.node.offset) {
         // could be false, e.g. $a[] = 1;
-        this.stk.push({ node: offsetNode.node.offset, val: undefined, inst: "rval" });   // must be a rval since we need its value
+        this.stk.push({ node: offsetNode.node.offset, inst: "READ" });   // read offset value, e.g. $a, $a[1],
     }
-    this.stk.push({ opts: offsetNode.node.what, val: undefined });
+    this.stk.push({ node: offsetNode.node.what, inst: "READ" });
 
     // evaluate 'what' which is the deref name, a "variable" or "array" or "string" AST node
     this.evaluate();
