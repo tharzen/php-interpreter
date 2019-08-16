@@ -45,6 +45,8 @@ The exception is the byref assignment: `$a = &$b`. In this situation, the evalua
 
 And for evaluating statments, the stack will cooperate with some instruction nodes.
 
+![Interpreter Architecture](https://i.imgur.com/G0bvP6V.png)
+
 ### Development
 - variable
   - scalar type `$` ✔
