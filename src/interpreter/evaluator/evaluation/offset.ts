@@ -93,6 +93,7 @@ Evaluator.prototype.evaluateOffset = function() {
                 }
             }
             if (typeof derefNode.val === "boolean" || typeof derefNode.val === "number") {
+                // surprisingly, PHP won't throw any errors when you try to get an offset element from a number or boolean
                 stknode.val = null;
                 this.stk.push(stknode);
                 return;
@@ -188,7 +189,7 @@ Evaluator.prototype.evaluateOffset = function() {
             offsetName = 0;
         }
 
-        // Now there are deref and offset, we can get its memory location
+        // Now there is deref location and offset name, we can get memory location
         if (typeof derefNode.loc.type === "boolean" || typeof derefNode.loc.type === "number") {
             console.error("Warning:  Cannot use a scalar value as an array");
             stknode.loc = undefined;
@@ -204,10 +205,11 @@ Evaluator.prototype.evaluateOffset = function() {
             if (typeof offsetName === "string") {
                 offsetName = 0;
             }
-            if (typeof this.env.get(derefNode.loc.idx).heap._var.vstore.get(derefNode.loc.vstoreId).val !== "string") {
+            if (typeof this.heap.ram.get(derefNode.loc.vstoreAddr).val !== "string") {
                 throw new Error("Eval Error: wrong type in writing string offset");
             }
-            const str: string = this.env.get(derefNode.loc.idx).heap._var.vstore.get(derefNode.loc.vstoreId).val;
+
+            const str: string = this.heap.ram.get(derefNode.loc.vstoreAddr).val;
             if (offsetName < 0) {
                 // If the integer is negative, the position is counted backwards from the end of the string
                 offsetName += str.length;
@@ -223,8 +225,15 @@ Evaluator.prototype.evaluateOffset = function() {
             this.stk.push(stknode);
             return;
         } else if (derefNode.loc.type === "array") {
-            let loc = derefNode.loc;
-            
+            const loc = derefNode.loc;
+            const hstore = this.heap.ram.get(derefNode.loc.hstoreAddr);
+            const offsetVslotAddr = hstore.data.get(offsetName);
+            const vslot = this.heap.ram.get(offsetVslotAddr);
+            const vstore = this.heap.ram.get(vslot.vstoreAddr);
+            loc.type = vstore.type;
+            loc.vslotAddr = offsetVslotAddr;
+            loc.vstoreAddr = vslot.vstoreAddr;
+            loc.hstoreAddr = this.heap.ram.get(vstore.hstoreAddr);
             this.stk.push(stknode);
             return;
         } else if (derefNode.loc.type === "object") {

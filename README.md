@@ -26,7 +26,7 @@ The PHP language specification [php-langspec](https://github.com/php/php-langspe
 For front end parser, information can be found in [README.md](https://github.com/eou/php-parser/blob/master/README.md) and [DEV.md](https://github.com/eou/php-parser/blob/master/DEV.md).
 
 ### Memory Model 
-The implementation of variable system is based on abstract model defined in [PHP langspec - memory model](https://github.com/php/php-langspec/blob/master/spec/04-basic-concepts.md#the-memory-model).
+The implementation of variable system is based on abstract model for storing variables defined in [PHP langspec - memory model](https://github.com/php/php-langspec/blob/master/spec/04-basic-concepts.md#the-memory-model).
 
 Traditionally, an environment is linked with its outer or enclosed environment thus it could be a linked list. But the whole environments in this interpreter is constructed by a Map. After the program exit one environment, we may destroy it or store it since the program may access some environments or some variables in them later.
 
@@ -45,7 +45,7 @@ The exception is the byref assignment: `$a = &$b`. In this situation, the evalua
 
 And for evaluating statments, the stack will cooperate with some instruction nodes.
 
-![Interpreter Architecture](https://i.imgur.com/AtFwmSS.png)
+![Interpreter Architecture](https://i.imgur.com/CUIy6ql.png)
 
 ### Development
 - variable

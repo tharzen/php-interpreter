@@ -7,6 +7,7 @@
 
 import { Node } from "../../php-parser/src/ast/node";
 import { Evaluator } from "../evaluator";
+import { IVSlot, IVStore } from "../memory";
 
 /**
  * @example
@@ -27,37 +28,37 @@ Evaluator.prototype.evaluateGlobal = function() {
         throw new Error("Eval Error: Evaluate wrong AST node: " + globalNode.node.kind + ", should be global");
     }
 
-    const varEnv = this.env.get(this.idx);
+    const varEnv = this.env.get(this.cur);
     const globalEnv = this.env.get(0);
     globalNode.node.items.forEach((varname: Node) => {
-        let globalVslot = globalEnv.heap._var.vslot[varname];
+        const globalVslot: number = globalEnv.st._var.get(varname);     // get the address in Heap
+        let vslotAddr: number;
         if (globalVslot === undefined) {
-            // if this global variable does not exist, create a new one
-            globalVslot = {
+            // if this global variable does not exist, create a new one in the heap
+            const newVslotAddr = this.heap.ptr++;
+            const newVstoreAddr = this.heap.ptr++;
+            const newVslot: IVSlot = {
+                modifiers: [true, false, false, false, false, false, false, false],
                 name: varname,
-                scope: "global",
-                vstoreId: Object.keys(globalEnv.heap._var.vstore).length,
+                vstoreAddr: newVstoreAddr,
             };
-            globalEnv.heap._var.vstore[globalVslot.vstoreId] = {
-                hstoreId: null,
+            const newVstore: IVStore = {
+                hstoreAddr: undefined,
                 refcount: 1,
                 type: null,
-                val: undefined,
+                val: null,
             };
+            this.heap.ram.set(newVslotAddr, newVslot);
+            this.heap.ram.set(newVstoreAddr, newVstore);
+            globalEnv.st._var.set(varname, newVslotAddr);
+            vslotAddr = newVslotAddr;
+        } else {
+            vslotAddr = globalVslot;
         }
 
-        let vslot = varEnv.heap._var.vslot[varname];
-        if (vslot === undefined) {
-            // if this local variable does not exist, create a new one
-            vslot = {
-                name: varname,
-                scope: "global",
-                vstoreId: globalVslot.vstoreId, // make a reference to the global one
-            };
-        } else {
-            vslot.scope = "global";
-            vslot.vstoreId = globalVslot.vstoreId;
-        }
+        // set the local variable's address to global variable's address
+        // what happens to the previous local variable if it exists ???
+        varEnv.st._var.set(varname, vslotAddr);
     });
     // Finally we do nothing on execution stack because this keyword only modify environment bindings.
 };

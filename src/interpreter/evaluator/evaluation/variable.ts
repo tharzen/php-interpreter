@@ -10,7 +10,7 @@
 
 import util = require("util");  // for test
 import { Evaluator, IStkNode } from "../evaluator";
-import { getValue, ILocation  } from "../memory";
+import { getValue, ILocation, IVSlot, IVStore  } from "../memory";
 
 /**
  * @example
@@ -30,45 +30,57 @@ Evaluator.prototype.evaluateVariable = function() {
     }
 
     // find the variable in current env
-    let varEnv = this.env.get(this.idx);
+    let varEnv = this.env.get(this.cur);
     const stknode: IStkNode = {};
+    const varname = varNode.node.name;
+    let vslotAddr: number = varEnv.st._var.get(varname);
     if (varNode.inst === "READ") {
         // get its value, could be boolean, number, string, IArray, IObject, closure (IFunction), null
-        stknode.val = getValue(varEnv.heap._var, varNode.node.name);
+        stknode.val = getValue(vslotAddr, this.heap);
     } else if (varNode.inst === "WRITE") {
-        const vslot = varEnv.heap._var.vslot.get(varNode.node.name);
-        let vstore;
-        let hstoreId;
-        if (vslot !== undefined) {
+        let vslot: IVSlot;
+        let vstore: IVStore;
+        let vstoreAddr: number;
+        let hstoreAddr: number;
+        if (vslotAddr !== undefined) {
+            vslot = this.heap.ram.get(vslotAddr);
             // check if it is global
             if (vslot.modifiers[0]) {
                 varEnv = this.env.get(0);
             }
-            vstore = varEnv.heap._var.vstore.get(vslot.vstoreId);
-            hstoreId = vstore.hstoreId;     // maybe null
+            vstoreAddr = vslot.vstoreAddr;
+            vstore = this.heap.ram.get(vstoreAddr);
+            hstoreAddr = vstore.hstoreAddr;     // maybe undefined
         } else {
             // create a new variable without any types
-            const env = this.env.get(this.idx);
-            const bind = env.heap._var;
-            bind.vslot.set(varNode.node.name, {
+            const env = this.env.get(this.cur);
+            const newVslotAddr = this.heap.ptr++;
+            const newVstoreAddr = this.heap.ptr++;
+            const newVslot: IVSlot = {
                 modifiers: [false, false, false, false, false, false, false, false],
-                name: varNode.node.name,
-                vstoreId: bind.vstore.size,
-            });
-            bind.vstore.set(bind.vstore.size, {
-                hstoreId: null,
+                name: varname,
+                vstoreAddr: newVstoreAddr,
+            };
+            const newVstore: IVStore = {
+                hstoreAddr: undefined,
                 refcount: 1,
                 type: null,
                 val: null,
-            });
+            };
+            this.heap.ram.set(newVslotAddr, newVslot);
+            this.heap.ram.set(newVstoreAddr, newVstore);
+            env.st._var.set(varNode.node.name, newVslotAddr);
+            vslotAddr = newVslotAddr;
+            vstoreAddr = newVstoreAddr;
+            vstore = newVstore;
         }
         // get its memory location
         const loc: ILocation = {
-            hstoreId,
-            idx: vslot.modifiers[0] ? 0 : this.idx,
-            type: vstore ? vstore.type : null,
-            vslotName: varNode.node.name,
-            vstoreId: vslot.vstoreId,
+            env: vslot.modifiers[0] ? 0 : this.cur,
+            hstoreAddr,
+            type: vstore.type,
+            vslotAddr,
+            vstoreAddr,
         };
         stknode.loc = loc;
     }

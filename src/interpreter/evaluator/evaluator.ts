@@ -18,14 +18,16 @@ import { Stack } from "./utils/stack";
 /**
  * @param {AST}     ast - abstract syntax tree
  * @param {Map}     env - environments map
- * @param {number}  idx - current environment index
+ * @param {number}  cur - current environment index
  * @param {Stack}   stk - stack keeping a log of the functions which are called during the execution
+ * @param {IHeap}   heap - storage, such as variable bindings, function declaration, class declaration, namespace location and etc.
  */
 export class Evaluator {
     public ast: AST;
     public env: Map<number, Env>;
-    public idx: number;
+    public cur: number;
     public stk: Stack<IStkNode>;
+    public heap: IHeap;
 
     /**
      * @description
@@ -91,8 +93,12 @@ export class Evaluator {
         this.ast = ast;
         this.env = new Map();
         this.env.set(0, new Env());     // global environment
-        this.idx = 0;
+        this.cur = 0;
         this.stk = new Stack<IStkNode>();
+        this.heap = {
+            ptr: 0,
+            ram: new Map(),
+        };
     }
 }
 
@@ -188,10 +194,25 @@ Evaluator.prototype.evaluate = function() {
 /**
  * @description
  * Node in the execution stack. It could be a AST node, an instruction, an operator and a value
+ * @param {any} val - Any AST nodes which can be evaluated to a value should store its value here, e.g. 1, true, "abc", { ... }
+ * @param {ILocation} loc - Any AST nodes which can be found in memory should store its location here
+ * @param {string} inst - instructions, e.g. READ, WRITE, END
+ * @param {ASTNode} node - AST node
  */
 export interface IStkNode {
-    val?: any;           // Any AST nodes which can be evaluated to a value should store its value here, e.g. 1, true, "abc", { ... }
-    loc?: ILocation;   // Any AST nodes which can be found in memory should store its location here
-    inst?: string;       // instructions, e.g. READ, WRITE, END
-    node?: ASTNode;      // AST node
+    val?: any;
+    loc?: ILocation;
+    inst?: string;
+    node?: ASTNode;
+}
+
+/**
+ * @description
+ * Storage which used to store any value or information in evaluator
+ * @param {Map}    ram - address => any acceptable data type or abstract model
+ * @param {number} ptr - address pointer, automatically increase
+ */
+export interface IHeap {
+    ram: Map<number, any>;
+    ptr: number;
 }
