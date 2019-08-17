@@ -31,32 +31,46 @@ Evaluator.prototype.evaluateVariable = function() {
 
     // find the variable in current env
     let varEnv = this.env.get(this.idx);
-    const vslot = varEnv.heap._var.vslot.get(varNode.node.name);
-    let vstore;
-    let hstoreId;
-    if (vslot !== undefined) {
-        // check if it is global
-        if (vslot.modifiers[0]) {
-            varEnv = this.env.get(0);
-        }
-        vstore = varEnv.heap._var.vstore.get(vslot.vstoreId);
-        hstoreId = vstore.hstoreId ? vstore.hstoreId : undefined;
-    }
-
     const stknode: IStkNode = {};
     if (varNode.inst === "READ") {
-        // get its value
-        // could be boolean, number, string, IArray, IObject, closure (IFunction), null
+        // get its value, could be boolean, number, string, IArray, IObject, closure (IFunction), null
         stknode.val = getValue(varEnv.heap._var, varNode.node.name);
     } else if (varNode.inst === "WRITE") {
+        const vslot = varEnv.heap._var.vslot.get(varNode.node.name);
+        let vstore;
+        let hstoreId;
+        if (vslot !== undefined) {
+            // check if it is global
+            if (vslot.modifiers[0]) {
+                varEnv = this.env.get(0);
+            }
+            vstore = varEnv.heap._var.vstore.get(vslot.vstoreId);
+            hstoreId = vstore.hstoreId;     // maybe null
+        } else {
+            // create a new variable without any types
+            const env = this.env.get(this.idx);
+            const bind = env.heap._var;
+            bind.vslot.set(varNode.node.name, {
+                modifiers: [false, false, false, false, false, false, false, false],
+                name: varNode.node.name,
+                vstoreId: bind.vstore.size,
+            });
+            bind.vstore.set(bind.vstore.size, {
+                hstoreId: null,
+                refcount: 1,
+                type: null,
+                val: null,
+            });
+        }
         // get its memory location
         const loc: ILocation = {
             hstoreId,
             idx: vslot.modifiers[0] ? 0 : this.idx,
+            type: vstore ? vstore.type : null,
             vslotName: varNode.node.name,
             vstoreId: vslot.vstoreId,
         };
-        stknode.loc = [loc];
+        stknode.loc = loc;
     }
 
     // need to push the result to the stack for possible next evaluation

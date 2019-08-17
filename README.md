@@ -11,7 +11,7 @@ const interpreter = new Interpreter(php);
 interpreter.run();
 ```
 
-The front end is [php-parser](https://github.com/glayzzle/php-parser).
+The front end is [glayzzle/php-parser](https://github.com/glayzzle/php-parser).
 
 The back end is to evaluate PHP abstract syntax tree directly.
 
@@ -45,7 +45,7 @@ The exception is the byref assignment: `$a = &$b`. In this situation, the evalua
 
 And for evaluating statments, the stack will cooperate with some instruction nodes.
 
-![Interpreter Architecture](https://i.imgur.com/G0bvP6V.png)
+![Interpreter Architecture](https://i.imgur.com/AtFwmSS.png)
 
 ### Development
 - variable

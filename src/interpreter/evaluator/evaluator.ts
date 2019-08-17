@@ -191,7 +191,7 @@ Evaluator.prototype.evaluate = function() {
  */
 export interface IStkNode {
     val?: any;           // Any AST nodes which can be evaluated to a value should store its value here, e.g. 1, true, "abc", { ... }
-    loc?: ILocation[];   // Any AST nodes which can be found in memory should store its location here
+    loc?: ILocation;   // Any AST nodes which can be found in memory should store its location here
     inst?: string;       // instructions, e.g. READ, WRITE, END
     node?: ASTNode;      // AST node
 }

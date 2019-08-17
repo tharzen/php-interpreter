@@ -102,13 +102,14 @@ Evaluator.prototype.evaluateArray = function() {
             const val = valNode.val;
             arrayVal.elt.set(key, val);
         } else {
+            // could be single number, string, boolean, null, IArray, IObject
             this.stk.push({
                 inst: "READ",
                 node: item,
             });
             this.evaluate();
             const valNode = this.stk.top.value; this.stk.pop();
-            const val = valNode.val;    // number, string, boolean, null, IArray, IObject
+            const val = valNode.val;
             arrayVal.elt.set(arrayVal.idx, val);
             arrayVal.idx += 1;
         }

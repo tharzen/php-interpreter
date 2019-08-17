@@ -11,7 +11,7 @@ import { Node as ASTNode } from "../php-parser/src/ast/node";
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
 
 // modifiers:     global,  static,  const,  public, protected, private, final,  abstract
-type modifiers = [boolean, boolean, boolean, boolean, boolean, boolean, boolean, boolean];
+type modifiers = [false, boolean, boolean, boolean, boolean, boolean, boolean, boolean];
 
 /**
  * @description
@@ -157,16 +157,15 @@ export interface IClass {
 
 /**
  * @description
- * Memory location model, find variables in specific IBindings
+ * Memory location model, find variables in specific environment
  */
 export interface ILocation {
-    // nested object, e.g. $a->x->y
-    // global: env.get(0).heap._var => $a; $a._property => $a->x; x._property => $a->x->y;
-    parent?: ILocation;
+    type: string;   // number, boolean, string, object, array, null
     idx: number;
     vslotName: string;
     vstoreId: number;
-    hstoreId: number;
+    hstoreId?: number;
+    offset?: number;    // for string offset
 }
 
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
@@ -179,6 +178,10 @@ export interface ILocation {
  */
 export function getValue(bind: IBindings, vslotName: string) {
     const vslot = bind.vslot.get(vslotName);
+    if (vslot === undefined) {
+        return undefined;
+    }
+
     const vstore = bind.vstore.get(vslot.vstoreId);
     const type = vstore.type;
     // scalar type
@@ -192,9 +195,11 @@ export function getValue(bind: IBindings, vslotName: string) {
         };
         const hstore = bind.hstore.get(vstore.hstoreId);
         array.idx = hstore.meta;    // next available index
-        // iterate the hstore's vslot to get elements' name
-        for (const eltName of hstore.data.vslot.keys()) {
-            array.elt.set(eltName, getValue(hstore.data, eltName));
+        if (hstore.data !== null) {
+            // iterate the hstore's vslot to get elements' name
+            for (const eltName of hstore.data.vslot.keys()) {
+                array.elt.set(eltName, getValue(hstore.data, eltName));
+            }
         }
         return array;
     } else if (type === "object") {
