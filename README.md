@@ -5,11 +5,11 @@ A PHP interpreter written by TypeScript based on PHP 7.
 
 ## Description
 Basic architecture:
-![Interpreter Architecture](https://i.imgur.com/EYbtRDA.png)
+![Interpreter Architecture](https://i.imgur.com/kQoklz4.png)
 
 This interpreter accepts PHP source code and return results after executing it.
 ```typescript
-const php = `<?php $a = 1; ?>`;
+const php = `<?php $a = 1; echo $a; ?>`;
 const interpreter = new Interpreter(php);
 interpreter.run();
 ```

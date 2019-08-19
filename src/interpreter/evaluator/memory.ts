@@ -115,13 +115,14 @@ import { Node as ASTNode } from "../php-parser/src/ast/node";
  * @param {string} name - if it is a closure, it has no name, leave this field as ""
  * @param {string[]} args - arguments
  * @param {ASTNode} body - AST node
+ * @param {Map} st - symbol table stores static variables
  */
 export interface IFunction {
     type: string;
     name: string;
     args: string[];
     body: ASTNode;
-    // symbol table stores static variables
+    st: Map<string, number>;
 }
 
 /**

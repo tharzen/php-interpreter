@@ -35,7 +35,7 @@ export interface ISymbolTable {
     _function: Map<string, number>;     // function name => address
     _trait: Map<string, number>;        // trait name => address
     _interface: Map<string, number>;    // interface name => address
-    _namespace: Map<string, number>;    // namespace name => environment index, not a kind of data type
+    _namespace: Map<string, number>;    // namespace name => address
 }
 
 /**
@@ -49,7 +49,7 @@ export interface ISymbolTable {
  *      - function (declaration), evaluator will evaluate it as a IFunction model and then store it in the Heap,
  *        its address will be stored in symbol table's `_function`.
  *      - trait, same as class
- *      - namespace, create a new environment, save its environment index to symbol table's `_namespace` Map,
+ *      - namespace, save the AST node in the Heap
  *        and then continue evaluating in that environment
  *      - call function or a closure, the evaluator will create a new environment immediately,
  *                                    and pass the arguments or `use` parent environment's variables in it
