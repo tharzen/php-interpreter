@@ -228,6 +228,10 @@ Evaluator.prototype.evaluateOffset = function() {
             const loc = derefNode.loc;
             const hstore = this.heap.ram.get(derefNode.loc.hstoreAddr);
             const offsetVslotAddr = hstore.data.get(offsetName);
+            if (offsetVslotAddr === undefined) {
+                // $a exists but $a[x] does not
+                
+            }
             const vslot = this.heap.ram.get(offsetVslotAddr);
             const vstore = this.heap.ram.get(vslot.vstoreAddr);
             loc.type = vstore.type;
@@ -239,8 +243,33 @@ Evaluator.prototype.evaluateOffset = function() {
         } else if (derefNode.loc.type === "object") {
             // TODO: any objects belonging to a class which implements `ArrayAccess`
         } else if (derefNode.loc.type === "null") {
-            // need to create a new array
+            if (derefNode.loc.hstoreAddr !== undefined) {
+                
+            } else {
 
+            }
+            // need to create a new array
+            const newVslotAddr = this.heap.ptr++;
+            const newVstoreAddr = this.heap.ptr++;
+            const newHstoreAddr = this.heap.ptr++;
+            const newVslot = {
+                modifiers: [true, false, false, false, false, false, false, false],
+                name: offsetNode.node.what.name,
+                vstoreAddr: newVstoreAddr,
+            };
+            const newVstore = {
+                hstoreAddr: newHstoreAddr,
+                refcount: 1,
+                type: "array",
+                val: null,
+            };
+            this.heap.ram.set(newVslotAddr, newVslot);
+            this.heap.ram.set(newVstoreAddr, newVstore);
+            this.env.get(this.cur).st._var.set(offsetNode.node.what.name, newVslotAddr);
+            const newHstore = {
+                type: "array",
+
+            }
         } else {
             throw new Error("Eval error: undefined type dereferencable-expression in writing offset");
         }

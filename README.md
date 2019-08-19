@@ -22,15 +22,17 @@ Currently there is no intermediate tier part.
 ### Language Specification
 The PHP language specification [php-langspec](https://github.com/php/php-langspec/blob/master/spec).
 
-### Parse
+### Parser
 For front end parser, information can be found in [README.md](https://github.com/eou/php-parser/blob/master/README.md) and [DEV.md](https://github.com/eou/php-parser/blob/master/DEV.md).
 
 ### Memory Model 
 The implementation of variable system is based on abstract model for storing variables defined in [PHP langspec - memory model](https://github.com/php/php-langspec/blob/master/spec/04-basic-concepts.md#the-memory-model).
 
-Traditionally, an environment is linked with its outer or enclosed environment thus it could be a linked list. But the whole environments in this interpreter is constructed by a Map. After the program exit one environment, we may destroy it or store it since the program may access some environments or some variables in them later.
+Traditionally, an environment is linked with its outer or enclosed environment thus it could be a linked list. But the whole environments in this interpreter is constructed by a Map and we can locate each environment by its id. After the program exit one environment, we may destroy it or store it since the program may access some environments or some variables in them later.
 
-Each environment has one "bind" which contains 3 connected maps: vslot, vstore, hstore which represents a variable system in this environment. And also, we need to save function, class, interface, trait, namespace declaration in environments in case we'll use functions or create new objects of some classes defined before.
+And there is a global Heap stores all the variables and other things needed to be stored, such as function, class, interface, trait, namespace declaration in environments in case we'll use functions or create new objects of some classes defined before.
+
+Each environment has a symbol table which contains each symbol's memory address in Heap so we can locate each symbol.
 
 ### Evaluation
 Generally, the evaluator evaluates statements and expressions which cause some side effects in environments.
@@ -55,9 +57,9 @@ And for evaluating statments, the stack will cooperate with some instruction nod
   - object
 - expression
   - subscript `[]`
-    - array
-    - string
-    - class
+    - array ✔
+    - string ✔
+    - object
   - assignment
     - variable =
     - list-intrinsic =
