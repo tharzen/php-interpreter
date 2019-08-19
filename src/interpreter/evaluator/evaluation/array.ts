@@ -34,12 +34,14 @@ Evaluator.prototype.evaluateArray = function() {
         throw new Error("Fatal error: Assignments can only happen to writable values.");
     }
 
+    // evaluate array to IArray abstract model, a temporary value
     const arrayVal: IArray = {
         elt: new Map(),
         idx: 0,
         type: "array",
     };
 
+    traverseArrayLoop:
     for (let i = 0, item: Node = arrayNode.node.items[i]; i < arrayNode.node.items.length; i++) {
         /**
          * For multi-line arrays on the other hand the trailing comma is commonly used,
@@ -50,15 +52,6 @@ Evaluator.prototype.evaluateArray = function() {
             throw new Error("Fatal error: Cannot use empty array elements in arrays.");
         }
 
-        /**
-         * The key can either be an integer or a string.
-         * - Strings containing valid decimal integers, unless the number is preceded by a + sign, will be cast to the integer type.
-         * - Floats are also cast to integers, which means that the fractional part will be truncated.
-         * - Bools are cast to integers, too, i.e. the key true will actually be stored under 1 and the key false under 0.
-         * - Null will be cast to the empty string, i.e. the key null will actually be stored under "".
-         * - Arrays and objects can not be used as keys. Doing so will result in a warning: Illegal offset type.
-         * The value can be of any type.
-         */
         if (item.kind === "entry") {
             // key
             this.stk.push({
@@ -67,7 +60,17 @@ Evaluator.prototype.evaluateArray = function() {
             });
             this.evaluate();
             const keyNode = this.stk.top.value; this.stk.pop();
-            let key = keyNode.val;  // key could be number, string, boolean, unary, null(NULL)
+            let key = keyNode.val;  // key could be number, string, boolean, null
+            /**
+             * Key Cast!!!
+             * The key can either be an integer or a string.
+             * - Strings containing valid decimal integers, unless the number is preceded by a + sign, will be cast to the integer type.
+             * - Floats are also cast to integers, which means that the fractional part will be truncated.
+             * - Bools are cast to integers, too, i.e. the key true will actually be stored under 1 and the key false under 0.
+             * - Null will be cast to the empty string, i.e. the key null will actually be stored under "".
+             * - Arrays and objects can not be used as keys. Doing so will result in a warning: Illegal offset type.
+             * The value can be of any type.
+             */
             switch (typeof key) {
                 case "boolean": {
                     key = Number(key);
@@ -84,12 +87,24 @@ Evaluator.prototype.evaluateArray = function() {
                     break;
                 }
                 case "number": {
-                    key = Math.trunc(key);  // maybe 0 and -0, but the storing map's key is string, they will all be 0
+                    key = Math.trunc(key);  // 0 maybe 0, +0, -0
+                    key = key === -0 ? 0 : key;
                     arrayVal.idx = key >= arrayVal.idx ? key + 1 : arrayVal.idx;
                     break;
                 }
-                default:
+                case "object": {
+                    if (key === null) {
+                        key = "";
+                    } else {
+                        console.error("Warning:  Illegal offset type.");
+                        continue traverseArrayLoop;     // do nothing with this array element
+                    }
                     break;
+                }
+                default: {
+                    console.error("Warning:  Illegal offset type.");
+                    continue traverseArrayLoop;     // do nothing with this array element
+                }
             }
 
             // value
@@ -102,7 +117,7 @@ Evaluator.prototype.evaluateArray = function() {
             const val = valNode.val;
             arrayVal.elt.set(key, val);
         } else {
-            // could be single number, string, boolean, null, IArray, IObject
+            // could be single number, string, boolean, null, IArray, IObject, IFunction (closure)
             this.stk.push({
                 inst: "READ",
                 node: item,

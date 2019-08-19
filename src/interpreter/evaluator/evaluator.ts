@@ -196,7 +196,7 @@ Evaluator.prototype.evaluate = function() {
  * Node in the execution stack. It could be a AST node, an instruction, an operator and a value
  * @param {any} val - Any AST nodes which can be evaluated to a value should store its value here, e.g. 1, true, "abc", { ... }
  * @param {ILocation} loc - Any AST nodes which can be found in memory should store its location here
- * @param {string} inst - instructions, e.g. READ, WRITE, END
+ * @param {string} inst - instructions, e.g. READ, WRITE
  * @param {ASTNode} node - AST node
  */
 export interface IStkNode {

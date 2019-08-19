@@ -147,7 +147,7 @@ Evaluator.prototype.evaluateOffset = function() {
         // evaluate 'what' which is the deref name, a "variable" or "array" or "string" AST node
         this.evaluate();
         const derefNode = this.stk.top.value; this.stk.pop();
-        // should be "variable" node, if it is a value on the left of the assignment, it will throw fatal error before pushed into stack
+        // should be "variable" node, if it is a temporary value on the left of the assignment, it will throw fatal error before pushed into stack
 
         let offsetName = null;
         if (offsetNode.node.offset) {
@@ -157,8 +157,15 @@ Evaluator.prototype.evaluateOffset = function() {
             offsetName = keyNode.val;
             if (offsetName !== undefined) {
                 if (typeof offsetName !== "number" && typeof offsetName !== "boolean" && typeof offsetName !== "string") {
-                    console.error("Warning: Illegal offset type " + offsetName);    // only warning but not terminate program
-                    offsetName = "";  // treat offset as null which is [] => 1
+                    if (offsetName === null) {
+                        offsetName = "";  // treats null as "" which is [""] => xxx
+                    } else {
+                        console.error("Warning: Illegal offset type " + offsetName);    // only warning and do nothing but not terminate program
+                        stknode.loc = undefined;
+                        stknode.inst = "ILOC";  // illegal location, cannot get legal memory location, the evaluator should stop evaluating this part
+                        this.stk.push(stknode);
+                        return;
+                    }
                 }
                 switch (typeof offsetName) {
                     case "boolean": {
@@ -174,7 +181,8 @@ Evaluator.prototype.evaluateOffset = function() {
                         break;
                     }
                     case "number": {
-                        offsetName = Math.trunc(offsetName);  // maybe 0 and -0, but the storing map's key is string, they will all be 0
+                        offsetName = Math.trunc(offsetName);  // maybe 0 and -0
+                        offsetName = offsetName === -0 ? 0 : offsetName;
                         break;
                     }
                     default:
@@ -229,8 +237,23 @@ Evaluator.prototype.evaluateOffset = function() {
             const hstore = this.heap.ram.get(derefNode.loc.hstoreAddr);
             const offsetVslotAddr = hstore.data.get(offsetName);
             if (offsetVslotAddr === undefined) {
-                // $a exists but $a[x] does not
-                
+                // $a exists but $a[x] does not, since it is a write operation, we need create a new offset in this array
+                const newVslotAddr = this.heap.ptr++;
+                const newVstoreAddr = this.heap.ptr++;
+                const newVslot = {
+                    modifiers: [false, false, false, false, false, false, false, false],
+                    name: offsetName,
+                    vstoreAddr: newVstoreAddr,
+                };
+                const newVstore = {
+                    hstoreAddr: undefined,
+                    refcount: 1,
+                    type: null,
+                    val: null,
+                };
+                this.heap.ram.set(newVslotAddr, newVslot);
+                this.heap.ram.set(newVstoreAddr, newVstore);
+                hstore.data.set(offsetName, newVslotAddr);
             }
             const vslot = this.heap.ram.get(offsetVslotAddr);
             const vstore = this.heap.ram.get(vslot.vstoreAddr);
@@ -244,31 +267,34 @@ Evaluator.prototype.evaluateOffset = function() {
             // TODO: any objects belonging to a class which implements `ArrayAccess`
         } else if (derefNode.loc.type === "null") {
             if (derefNode.loc.hstoreAddr !== undefined) {
-                
+                // $a = null; $a already exists in memory, but $a is not an array
+                this.env.get(derefNode.loc.idx).st._var.get
             } else {
-
-            }
-            // need to create a new array
-            const newVslotAddr = this.heap.ptr++;
-            const newVstoreAddr = this.heap.ptr++;
-            const newHstoreAddr = this.heap.ptr++;
-            const newVslot = {
-                modifiers: [true, false, false, false, false, false, false, false],
-                name: offsetNode.node.what.name,
-                vstoreAddr: newVstoreAddr,
-            };
-            const newVstore = {
-                hstoreAddr: newHstoreAddr,
-                refcount: 1,
-                type: "array",
-                val: null,
-            };
-            this.heap.ram.set(newVslotAddr, newVslot);
-            this.heap.ram.set(newVstoreAddr, newVstore);
-            this.env.get(this.cur).st._var.set(offsetNode.node.what.name, newVslotAddr);
-            const newHstore = {
-                type: "array",
-
+                // need to create a new array
+                const newVslotAddr = this.heap.ptr++;
+                const newVstoreAddr = this.heap.ptr++;
+                const newHstoreAddr = this.heap.ptr++;
+                const newVslot = {
+                    modifiers: [false, false, false, false, false, false, false, false],
+                    name: offsetNode.node.what.name,
+                    vstoreAddr: newVstoreAddr,
+                };
+                const newVstore = {
+                    hstoreAddr: newHstoreAddr,
+                    refcount: 1,
+                    type: "array",
+                    val: null,
+                };
+                this.env.get(this.cur).st._var.set(offsetNode.node.what.name, newVslotAddr);
+                const newHstore = {
+                    data: new Map(),
+                    meta: 0,
+                    refcount: 1,
+                    type: "array",
+                };
+                this.heap.ram.set(newVslotAddr, newVslot);
+                this.heap.ram.set(newVstoreAddr, newVstore);
+                this.heap.ram.set(newHstoreAddr, newHstore);
             }
         } else {
             throw new Error("Eval error: undefined type dereferencable-expression in writing offset");

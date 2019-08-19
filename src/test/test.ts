@@ -32,7 +32,15 @@
 // console.log(a);
 // console.log(c);
 
-type x = [boolean, boolean];
-let a: x = [true, true];
-a[1] = false;
-console.log(a);
+// type x = [boolean, boolean];
+// let a: x = [true, true];
+// a[1] = false;
+// console.log(a);
+
+function x(a: string, b: boolean) {
+    console.log(a);
+    console.log(b);
+}
+
+x("1", "2");
+

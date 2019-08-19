@@ -4,6 +4,9 @@ A PHP interpreter written by TypeScript based on PHP 7.
 ---
 
 ## Description
+Basic architecture:
+![Interpreter Architecture](https://i.imgur.com/EYbtRDA.png)
+
 This interpreter accepts PHP source code and return results after executing it.
 ```typescript
 const php = `<?php $a = 1; ?>`;
@@ -35,7 +38,7 @@ And there is a global Heap stores all the variables and other things needed to b
 Each environment has a symbol table which contains each symbol's memory address in Heap so we can locate each symbol.
 
 ### Evaluation
-Generally, the evaluator evaluates statements and expressions which cause some side effects in environments.
+Generally, the evaluator evaluates statements and expressions which will cause some side effects in environments.
 
 For evaluating expressions, the general idea is to put a AST node into stack and then pop it, evaluate it. 
 
@@ -47,7 +50,7 @@ The exception is the byref assignment: `$a = &$b`. In this situation, the evalua
 
 And for evaluating statments, the stack will cooperate with some instruction nodes.
 
-![Interpreter Architecture](https://i.imgur.com/CUIy6ql.png)
+More details see [evaluator/README.md](https://github.com/eou/php-interpreter/tree/master/src/interpreter/evaluator/README.md).
 
 ### Development
 - variable
@@ -72,7 +75,7 @@ And for evaluating statments, the stack will cooperate with some instruction nod
 - class
 
 ## Built With
-- [php-parser v3.0.0-prerelease.8](https://github.com/glayzzle/php-parser)
+- [php-parser v3.0.0-prerelease.8](https://github.com/glayzzle/php-parser/releases/tag/3.0.0-prerelease.8)
 - [TypeScript](https://www.typescriptlang.org/index.html)
 
 ## Contributing

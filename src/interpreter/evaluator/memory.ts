@@ -49,6 +49,15 @@ export interface IVStore {
  * @description
  * A heap storage location (HStore) is used to represent the contents of a composite value,
  * and is created by the Engine as needed. HStore is a container which contains VSlots.
+ * [VSlot $a *] --> [VStore array *] --> [HStore array [VSlot 0 *] [VSlot 'B' *]]
+ *                                                        ↓            ↓
+ *                                                        ↓            ↓
+ *                                              [VStore int 10]   [VStore Obj *] -> [...]
+ *
+ * [VSlot $a *] --> [VStore object *] --> [HStore Point [VSlot $x *] [VSlot $y *]]
+ *                                                          ↓            ↓
+ *                                                          ↓            ↓
+ *                                                 [VStore int 1]  [VStore int 3]
  * @param {string} type - array (an array in PHP is actually an ordered map), object (Point), closure
  * @param {Map} data - data could store array, object, closure,
  * @param {number} refcount - reference-counting
@@ -56,7 +65,7 @@ export interface IVStore {
  */
 export interface IHStore {
     type: string;
-    data: Map<string | number, number>;    // e.g. if it is object, it should be a Map<string, number> which is property name => vslot address
+    data: Map<number | string, number>;    // e.g. if it is object, it should be a Map<string, number> which is property name => vslot address
     refcount: number;
     meta: any;
 }
@@ -68,10 +77,6 @@ export interface IHStore {
 /**
  * @description
  * Array type abstract model
- * [VSlot $a *] --> [VStore array *] --> [HStore array [VSlot 0 *] [VSlot 'B' *]]
- *                                                        ↓            ↓
- *                                                        ↓            ↓
- *                                              [VStore int 10]   [VStore Obj *] -> [...]
  * @see
  * https://github.com/php/php-langspec/blob/master/spec/12-arrays.md
  * @param {string} type - array
@@ -87,10 +92,6 @@ export interface IArray {
 /**
  * @description
  * Object type abstract model
- * [VSlot $a *] --> [VStore object *] --> [HStore Point [VSlot $x *] [VSlot $y *]]
- *                                                          ↓            ↓
- *                                                          ↓            ↓
- *                                                 [VStore int 1]  [VStore int 3]
  * @see
  * https://www.php.net/manual/en/language.types.object.php
  * https://www.php.net/manual/en/language.oop5.php
@@ -120,6 +121,7 @@ export interface IFunction {
     name: string;
     args: string[];
     body: ASTNode;
+    // symbol table stores static variables
 }
 
 /**
@@ -182,7 +184,7 @@ export interface IClass {
  * @param {number} vslotAddr - vslot address
  * @param {number} vstoreAddr - vstore address
  * @param {number} hstoreAddr - hstore address
- * @param {number} offset -for string offset
+ * @param {number} offset - for string offset
  */
 export interface ILocation {
     type: string;
@@ -198,6 +200,45 @@ export interface ILocation {
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
 
 import { IHeap } from "./evaluator";
+
+/**
+ * @description
+ * Memory model API: create a empty variable in the heap and return its vslot address
+ * @param {IHeap} heap
+ * @param {string} varname - variable name
+ * @param {string} type - variable type
+ * @param {any} val - variable value
+ */
+export function createVariable(heap: IHeap, varname: number | string, type?: string): number {
+    const newVslotAddr = heap.ptr++;
+    const newVstoreAddr = heap.ptr++;
+    const newVslot: IVSlot = {
+        modifiers: [false, false, false, false, false, false, false, false],
+        name: varname,
+        vstoreAddr: newVstoreAddr,
+    };
+    const newVstore: IVStore = {
+        hstoreAddr: null,
+        refcount: 1,
+        type, // maybe undefined
+        val: null,
+    };
+    if (type && type !== "boolean" && type !== "number" && type !== "string") {
+        // non-scalar type, need hstore
+        const newHstoreAddr = heap.ptr++;
+        const newHstore: IHStore = {
+            data: null,
+            meta: null,
+            refcount: 1,
+            type,
+        };
+        newVstore.hstoreAddr = newHstoreAddr;
+        heap.ram.set(newHstoreAddr, newHstore);
+    }
+    heap.ram.set(newVslotAddr, newVslot);
+    heap.ram.set(newVstoreAddr, newVstore);
+    return newVslotAddr;
+}
 
 /**
  * @description
@@ -244,12 +285,12 @@ export function getValue(vslotAddr: number, heap: IHeap) {
         return object;
     } else if (type === "closure") {
         const hstore: IHStore = heap.ram.get(vstore.hstoreAddr);
-        const closure = hstore.data.values().next().value;  // if it is IFunction, it should be Map's first value
-        return closure;
+        const closureAddr = hstore.data.values().next().value;  // if it is IFunction, it should be Map's first value
+        return heap.ram.get(closureAddr);
     } else if (type === "null") {
         return null;
     } else {
-        throw new Error("Eval Error: unidentified data type");
+        throw new Error("Eval Error: unidentified data type.");
     }
 }
 
@@ -286,9 +327,9 @@ export function setValue(vslotAddr: number, heap: IHeap, value: any) {
             if (value.type === "array") {
                 // IArray
                 vstore.type = "array";
-                vstore.val = undefined;
+                vstore.val = undefined;     // for array data type, we do not use vstore.val
                 if (vstore.hstoreAddr !== undefined) {
-                    // remove previous connection
+                    // remove previous connections
                     const hstore: IHStore = heap.ram.get(vstore.hstoreAddr);
                     if (hstore !== undefined) {
                         if (hstore.refcount !== 1) {
@@ -298,6 +339,7 @@ export function setValue(vslotAddr: number, heap: IHeap, value: any) {
                         }
                     }
                 }
+                // create hstore to store the array
                 const newHstoreAddr = heap.ptr++;
                 vstore.hstoreAddr = newHstoreAddr;
                 const initNewHstore = {
@@ -308,22 +350,9 @@ export function setValue(vslotAddr: number, heap: IHeap, value: any) {
                 };
                 heap.ram.set(newHstoreAddr, initNewHstore);
                 const newHstore: IHStore = heap.ram.get(newHstoreAddr);
-                value.elt.forEach((val: any, key: string | number, _: any) => {
-                    // declare a new vslot and vstore
-                    const newVslotAddr = heap.ptr++;
-                    const initNewVslot: IVSlot = {
-                        modifiers: [false, false, false, false, false, false, false, false],
-                        name: key,
-                        vstoreAddr: heap.ptr++,
-                    };
-                    heap.ram.set(newVslotAddr, initNewVslot);
-                    const initNewVstore: IVStore = {
-                        hstoreAddr: undefined,
-                        refcount: 1,
-                        type: null,
-                        val: null,
-                    };
-                    heap.ram.set(initNewVslot.vstoreAddr, initNewVstore);
+                value.elt.forEach((val: any, key: number | string, _: any) => {
+                    // for each element in array, create a new variable model, key is vslot name, val is its value
+                    const newVslotAddr = createVariable(heap, key);
                     // and then set its value
                     setValue(newVslotAddr, heap, val);
                     newHstore.data.set(key, newVslotAddr);
@@ -333,7 +362,7 @@ export function setValue(vslotAddr: number, heap: IHeap, value: any) {
                 vstore.type = "object";
                 vstore.val = undefined;
                 if (vstore.hstoreAddr !== undefined) {
-                    // remove previous connection
+                    // remove previous connections
                     const hstore: IHStore = heap.ram.get(vstore.hstoreAddr);
                     if (hstore !== undefined) {
                         if (hstore.refcount !== 1) {
