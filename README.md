@@ -4,12 +4,13 @@ A PHP interpreter written by TypeScript based on PHP 7.
 ---
 
 ## Description
-Basic architecture:
+
 ![Interpreter Architecture](https://i.imgur.com/kQoklz4.png)
 
 This interpreter accepts PHP source code and return results after executing it.
 ```typescript
-const php = `<?php $a = 1; echo $a; ?>`;
+import { Interpreter } from "./interpreter";
+const php = `<?php $a = 1; $a = $d = true; ?>`;
 const interpreter = new Interpreter(php);
 interpreter.run();
 ```

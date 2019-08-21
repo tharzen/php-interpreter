@@ -37,10 +37,9 @@
 // a[1] = false;
 // console.log(a);
 
-function x(a: string, b: boolean) {
-    console.log(a);
-    console.log(b);
-}
+// function x(a: string, b: boolean) {
+//     console.log(a);
+//     console.log(b);
+// }
 
-x("1", "2");
-
+// x("1", "2");
