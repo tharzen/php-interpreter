@@ -122,6 +122,7 @@ Evaluator.prototype.evaluateAssign = function() {
     } else {
         // if it is compound assignment operators, we convert it into common '=' operator, such as $a += 1 => $a = $a + 1
         // $a += &$c;
+        // TODO: this error should be throwed from 'bin'
         if (assignNode.data.right.byref !== undefined && assignNode.data.right.byref) {
             throw new Error("Parse error: syntax error, unexpected '&'");   // not included in php-parser right now
         }
