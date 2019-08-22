@@ -1,5 +1,6 @@
 /**
- * @authors https://github.com/eou/php-interpreter
+ * @authors
+ * https://github.com/tharzen/php-interpreter
  * @description
  * The Stack class represents a last-in-first-out (LIFO) stack of objects.
  * It is a recursion version implemented with linkedlist.
@@ -7,7 +8,7 @@
 
 import { INode, LinkedList } from "./linkedlist";
 
-export class Stack<T> extends LinkedList<T>{
+export class Stack<T> extends LinkedList<T> {
     public top: INode<T> = null;
 
     /**

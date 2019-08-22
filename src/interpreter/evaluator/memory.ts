@@ -1,7 +1,10 @@
 /**
- * @authors https://github.com/eou/php-interpreter
- * @description The definition of memory model basically for storing variables
- * @see https://github.com/php/php-langspec/blob/master/spec/04-basic-concepts.md#the-memory-model
+ * @authors
+ * https://github.com/tharzen/php-interpreter
+ * @description
+ * The definition of memory model basically for storing variables
+ * @see
+ * https://github.com/php/php-langspec/blob/master/spec/04-basic-concepts.md#the-memory-model
  */
 
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
@@ -247,7 +250,7 @@ export function createVariable(heap: IHeap, varname: number | string, type?: str
  * @param {number} vslotAddr
  * @param {IHeap} heap
  */
-export function getValue(vslotAddr: number, heap: IHeap) {
+export function getValue(heap: IHeap, vslotAddr: number) {
     const vslot: IVSlot = heap.ram.get(vslotAddr);
     if (vslot === undefined) {
         return undefined;
@@ -270,7 +273,7 @@ export function getValue(vslotAddr: number, heap: IHeap) {
         if (hstore.data) {
             // iterate the hstore's vslot to get elements' name
             for (const eltName of hstore.data.keys()) {
-                array.elt.set(eltName, getValue(hstore.data.get(eltName), heap));
+                array.elt.set(eltName, getValue(heap, hstore.data.get(eltName)));
             }
         }
         return array;
@@ -299,7 +302,7 @@ export function getValue(vslotAddr: number, heap: IHeap) {
  * @description
  * Memory model API: set a variable value in an environment
  */
-export function setValue(vslotAddr: number, heap: IHeap, value: any) {
+export function setValue(heap: IHeap, vslotAddr: number, value: any) {
     const vslot: IVSlot = heap.ram.get(vslotAddr);
     if (vslot === undefined) {
         throw new Error("Eval error: cannot set value to undefined variable.");
@@ -355,7 +358,7 @@ export function setValue(vslotAddr: number, heap: IHeap, value: any) {
                     // for each element in array, create a new variable model, key is vslot name, val is its value
                     const newVslotAddr = createVariable(heap, key);
                     // and then set its value
-                    setValue(newVslotAddr, heap, val);
+                    setValue(heap, newVslotAddr, val);
                     newHstore.data.set(key, newVslotAddr);
                 });
             } else if (value.type === "object") {

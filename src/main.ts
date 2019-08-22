@@ -1,6 +1,6 @@
 /**
  * @authors
- * https://github.com/eou/php-interpreter
+ * https://github.com/tharzen/php-interpreter
  * @description
  * The main entry for interpreting PHP.
  */

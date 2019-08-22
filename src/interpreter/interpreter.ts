@@ -1,7 +1,10 @@
 /**
- * @authors https://github.com/eou/php-interpreter
- * @description The main entry of interpreter.
- * @see https://github.com/php/php-langspec/tree/master/spec
+ * @authors
+ * https://github.com/tharzen/php-interpreter
+ * @description
+ * The main entry of interpreter.
+ * @see
+ * https://github.com/php/php-langspec/tree/master/spec
  */
 
 import { Evaluator } from "./evaluator/evaluator";

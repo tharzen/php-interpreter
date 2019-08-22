@@ -43,3 +43,19 @@
 // }
 
 // x("1", "2");
+
+// enum NodeKind {
+//     ast = "ast",
+//     value = "value",
+//     address = "address",
+//     instruction = "instruction",
+// }
+// interface IStkNode {
+//     kind: NodeKind;
+//     data: any;
+// }
+
+// let n: IStkNode = {
+//     kind: NodeKind.ast,
+//     data: null,
+// };

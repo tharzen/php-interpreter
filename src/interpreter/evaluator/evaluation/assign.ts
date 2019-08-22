@@ -1,6 +1,6 @@
 /**
  * @authors
- * https://github.com/eou/php-interpreter
+ * https://github.com/tharzen/php-interpreter
  * @description
  * The file for assignment evaluation
  * @see
@@ -9,8 +9,9 @@
  */
 
 import util = require("util");  // for test
-import { Node } from "../../php-parser/src/ast/node";
-import { Evaluator, IStkNode } from "../evaluator";
+import { Node as ASTNode } from "../../php-parser/src/ast/node";
+import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
+import { setValue } from "../memory";
 
 /**
  * @example
@@ -50,111 +51,67 @@ import { Evaluator, IStkNode } from "../evaluator";
  * $a = new foo;
  */
 Evaluator.prototype.evaluateAssign = function() {
-    // split the top element into seperate steps, | left => operator => right |
-    const assignNode = this.stk.top.value; this.stk.pop();
-    if (assignNode.node.kind !== "assign") {
-        throw new Error("Eval Error: Evaluate wrong AST node: " + assignNode.node.kind + ", should be assign");
-    }
+    // split the top element into seperate steps, | left => right => operator |
+    const assignNode = evalStkPop(this.stk, StkNodeKind.ast, "assign");
 
-    this.stk.push({ node: assignNode.node.left, val: null, inst: "lval" }); // lvalue: an expression that designates a location that can store a value
-    this.stk.push({ opts: assignNode.node.operator, val: null, inst: "opts" });
-    this.stk.push({ node: assignNode.node.right, val: null, inst: "rval" });    // right val, we simply need its value
+    // ATTENTION: for the unparser purpose, the source code of AST in php-parser has been changed
+    // the `operator.sign` is the operator
+    if (assignNode.data.operator.sign === "=") {
+        // $a = 1;
+        // operator
+        this.stk.push({
+            data: null,
+            inst: assignNode.data.operator,
+            kind: StkNodeKind.indicator,
+        });
+        // rval, we simply need its value
+        this.stk.push({
+            data: assignNode.data.right,
+            inst: "getValue",
+            kind: StkNodeKind.ast,
+        });
+        // lval: an expression that designates a location that can store a value
+        this.stk.push({
+            data: assignNode.data.left,
+            inst: "getAddress",
+            kind: StkNodeKind.ast,
+        });
+        // stack bottom => endOfAssign => '=' => right expr => left expr
 
-    this.evaluate();    // evaluate right expressions and then push the value back into stack
-    const rightNode = this.stk.top.value; this.stk.pop();
-    if (rightNode.vals.pos === null) {
-        // undefined variable
-    }
+        // evaluate left expressions and then push the address back into stack
+        this.evaluate();
+        let leftAddress = evalStkPop(this.stk, StkNodeKind.address);
+        const rightNode = this.stk.top.value; this.stk.pop();
+        this.stk.push(leftAddress);
+        this.stk.push(rightNode);
+        // stack bottom => endOfAssign => '=' => address => right expr
 
-    const operator = this.stk.top.value; this.stk.pop();
-    this.evaluate();    // evaluate right expressions and then push the value back into stack
-    const leftNode = this.stk.top.value; this.stk.pop();
+        // evaluate right expressions and then push the value back into stack
+        this.evaluate();
+        const rightValue = evalStkPop(this.stk, StkNodeKind.value);     // value
+        leftAddress = evalStkPop(this.stk, StkNodeKind.address);        // address
+        const operator = evalStkPop(this.stk, StkNodeKind.indicator);   // =
 
-    if (operator.opts.sign === "=") {
-        if (leftNode.vals.loc === null) {
-
-        }
-
-        // search this variable in the current environment otherwise create a new one
-        const currentEnv = this.env.env[this.env.idx];
-        if (leftNode.node.kind === "variable") {
-            // $a = ...;
-            if (currentEnv.bind.vslot[leftNode.node.name] !== undefined) {
-                // if the variable already exists, overwrite it
-                const vslot = currentEnv.bind.vslot[leftNode.node.name];
-                const vstore = currentEnv.bind.vstore[vslot.vstoreId];
-                if (typeof rightNode.vals === "number" ||
-                    typeof rightNode.vals === "string" ||
-                    typeof rightNode.vals === "boolean") {
-                    // scalar type value
-                    vstore.type = typeof rightNode.vals;
-                    vstore.val = rightNode.vals;
-                    if (typeof rightNode.vals === "number") {
-                        vstore.type = Number.isInteger(rightNode.vals) ? "integer" : "double";
-                    }
-                    // need to push a value to the stack for possible next evaluation
-                    const stknode: IStkNode = {
-                        vals: vstore.val,
-                    };
-                    this.stk.push(stknode);
-                } else if (typeof rightNode.vals === "object") {
-                    // object, array
-
-                } else if (rightNode.node.kind === "variable") {
-                    // variable
-
-                }
-            } else {
-                // otherwise create a new one
-                currentEnv.bind.vslot[leftNode.node.name] = { name: "", vstoreId: -1 };
-                const vslot = currentEnv.bind.vslot[leftNode.node.name];
-                vslot.name = leftNode.node.name;
-                vslot.vstoreId = Object.keys(currentEnv.bind.vstore).length;
-                currentEnv.bind.vstore[vslot.vstoreId] = { type: "", val: null,  hstoreId: null, refcount: 1 };
-                const vstore = currentEnv.bind.vstore[vslot.vstoreId];
-                if (typeof rightNode.vals === "number" ||
-                    typeof rightNode.vals === "string" ||
-                    typeof rightNode.vals === "boolean") {
-                    vstore.type = typeof rightNode.vals;
-                    vstore.val = rightNode.vals;
-                    if (typeof rightNode.vals === "number") {
-                        vstore.type = Number.isInteger(rightNode.vals) ? "integer" : "double";
-                    }
-                    // need to push a value to the stack for possible next evaluation
-                    const stknode: IStkNode = {
-                        vals: vstore.val,
-                    };
-                    this.stk.push(stknode);
-                } else if (typeof rightNode.vals === "object") {
-
-                }
-
-            }
-        } else if (leftNode.node.kind === "offsetlookup") {
-            // $a[1] = ...;
-
-        } else if (leftNode.node.kind === "propertylookup") {
-            // $a->x = ...;
-
-        } else {
-            throw new Error("Unknown left expression type: " + leftNode.node.kind);
-        }
+        // assignment
+        setValue(this.heap, leftAddress.data.vslotAddr, rightValue);
     } else {
-        // if it is combined operators, we convert it into common '=' operator, such as $a += 1 => $a = $a + 1
+        // if it is compound assignment operators, we convert it into common '=' operator, such as $a += 1 => $a = $a + 1
         const newExp = { kind: null, left: null, right: null, operator: null };
-        Object.assign(newExp, assignNode.node);   // deep copy old expression
+        Object.assign(newExp, assignNode.data);   // deep copy old expression
         newExp.operator = "=";
 
         const newRightNode = { kind: null, type: null, left: null, right: null };
         newRightNode.kind = "bin";
-        newRightNode.type = operator.opts.split("=")[0];
-        newRightNode.left = new Node();
+        newRightNode.type = assignNode.data.operator.sign.split("=")[0];
+        newRightNode.left = new ASTNode();
         Object.assign(newRightNode.left, newExp.left);
-        Object.assign(newRightNode.right, assignNode.node.right);
+        Object.assign(newRightNode.right, assignNode.data.right);
         newExp.right = newRightNode;
 
         const stknode: IStkNode = {
-            node: newExp,
+            data: newExp,
+            inst: null,
+            kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
         this.evaluate();

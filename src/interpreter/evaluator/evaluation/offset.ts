@@ -1,6 +1,6 @@
 /**
  * @authors
- * https://github.com/eou/php-interpreter
+ * https://github.com/tharzen/php-interpreter
  * @description
  * The file for offset evaluation (an element in an array or a string)
  * @see

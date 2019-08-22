@@ -1,6 +1,6 @@
 /**
  * @authors
- * https://github.com/eou/php-interpreter
+ * https://github.com/tharzen/php-interpreter
  * @description
  * The file for array evaluation
  * @see
@@ -10,7 +10,7 @@
  */
 
 import { Node } from "../../php-parser/src/ast/node";
-import { Evaluator, IStkNode } from "../evaluator";
+import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
 import { IArray } from "../memory";
 
 /**
@@ -24,13 +24,11 @@ import { IArray } from "../memory";
  * [4, 6 => "123"];
  */
 Evaluator.prototype.evaluateArray = function() {
-    const arrayNode = this.stk.top.value; this.stk.pop();
-    if (arrayNode.node.kind !== "array") {
-        throw new Error("Eval Error: Evaluate wrong AST node: " + arrayNode.node.kind + ", should be array");
-    }
+
+    const arrayNode = evalStkPop(this.stk, StkNodeKind.ast, "array");
 
     // `[1,2] = ...;` is illegal because this is a temporary value not in memory
-    if (arrayNode.inst !== undefined && arrayNode.inst === "WRITE") {
+    if (arrayNode.inst !== undefined && arrayNode.inst === "getAddress") {
         throw new Error("Fatal error: Assignments can only happen to writable values.");
     }
 
@@ -42,25 +40,26 @@ Evaluator.prototype.evaluateArray = function() {
     };
 
     traverseArrayLoop:
-    for (let i = 0, item: Node = arrayNode.node.items[i]; i < arrayNode.node.items.length; i++) {
+    for (let i = 0, item: Node = arrayNode.data.items[i]; i < arrayNode.data.items.length; i++) {
         /**
          * For multi-line arrays on the other hand the trailing comma is commonly used,
          * as it allows easier addition of new elements at the end. In this way AST node could be null.
          * But not allow empty elements in array, such as [,,,].
          */
-        if ((item === null && i === 0) || (item === null && i !== arrayNode.node.items.length - 1)) {
+        if ((item === null && i === 0) || (item === null && i !== arrayNode.data.items.length - 1)) {
             throw new Error("Fatal error: Cannot use empty array elements in arrays.");
         }
 
         if (item.kind === "entry") {
             // key
             this.stk.push({
-                inst: "READ",
-                node: item.key,
+                data: item.key,
+                inst: "getValue",
+                kind: StkNodeKind.ast,
             });
             this.evaluate();
-            const keyNode = this.stk.top.value; this.stk.pop();
-            let key = keyNode.val;  // key could be number, string, boolean, null
+            const keyNode = evalStkPop(this.stk, StkNodeKind.value);
+            let key = keyNode.data;  // key could be number, string, boolean, null
             /**
              * Key Cast!!!
              * The key can either be an integer or a string.
@@ -109,22 +108,24 @@ Evaluator.prototype.evaluateArray = function() {
 
             // value
             this.stk.push({
-                inst: "READ",
-                node: item.value,
+                data: item.value,
+                inst: "getValue",
+                kind: StkNodeKind.ast,
             });
             this.evaluate();
-            const valNode = this.stk.top.value; this.stk.pop();
-            const val = valNode.val;
+            const valNode = evalStkPop(this.stk, StkNodeKind.value);
+            const val = valNode.data;
             arrayVal.elt.set(key, val);
         } else {
             // could be single number, string, boolean, null, IArray, IObject, IFunction (closure)
             this.stk.push({
-                inst: "READ",
-                node: item,
+                data: item,
+                inst: "getValue",
+                kind: StkNodeKind.ast,
             });
             this.evaluate();
-            const valNode = this.stk.top.value; this.stk.pop();
-            const val = valNode.val;
+            const valNode = evalStkPop(this.stk, StkNodeKind.value);
+            const val = valNode.data;
             arrayVal.elt.set(arrayVal.idx, val);
             arrayVal.idx += 1;
         }
@@ -132,7 +133,9 @@ Evaluator.prototype.evaluateArray = function() {
 
     // need to push the result to the stack for possible next evaluation
     const stknode: IStkNode = {
-        val: arrayVal,
+        data: arrayVal,
+        inst: null,
+        kind: StkNodeKind.value,
     };
     this.stk.push(stknode);
 };

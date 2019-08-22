@@ -1,12 +1,15 @@
 /**
- * @authors https://github.com/eou/php-interpreter
- * @description The file for `global` evaluation
- * @see https://www.php.net/language.variables.scope
- *      https://github.com/php/php-langspec/blob/master/spec/07-variables.md#global-variables
+ * @authors
+ * https://github.com/tharzen/php-interpreter
+ * @description
+ * The file for `global` evaluation
+ * @see
+ * https://www.php.net/language.variables.scope
+ * https://github.com/php/php-langspec/blob/master/spec/07-variables.md#global-variables
  */
 
 import { Node } from "../../php-parser/src/ast/node";
-import { Evaluator } from "../evaluator";
+import { evalStkPop, Evaluator, StkNodeKind } from "../evaluator";
 import { IVSlot, IVStore } from "../memory";
 
 /**
@@ -23,14 +26,11 @@ import { IVSlot, IVStore } from "../memory";
  * respectively, of each global variable currently defined.
  */
 Evaluator.prototype.evaluateGlobal = function() {
-    const globalNode = this.stk.top.value; this.stk.pop();
-    if (globalNode.node.kind !== "global") {
-        throw new Error("Eval Error: Evaluate wrong AST node: " + globalNode.node.kind + ", should be global");
-    }
+    const globalNode = evalStkPop(this.stk, StkNodeKind.ast, "global");
 
-    const varEnv = this.env.get(this.cur);
-    const globalEnv = this.env.get(0);
-    globalNode.node.items.forEach((varname: Node) => {
+    const varEnv = this.env[this.cur];
+    const globalEnv = this.env[0];
+    globalNode.data.items.forEach((varname: Node) => {
         const globalVslot: number = globalEnv.st._var.get(varname);     // get the address in Heap
         let vslotAddr: number;
         if (globalVslot === undefined) {
@@ -60,5 +60,5 @@ Evaluator.prototype.evaluateGlobal = function() {
         // what happens to the previous local variable if it exists ???
         varEnv.st._var.set(varname, vslotAddr);
     });
-    // Finally we do nothing on execution stack because this keyword only modify environment bindings.
+    // Finally we do nothing on execution stack because this keyword only modify environment.
 };

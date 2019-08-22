@@ -1,5 +1,6 @@
 /**
- * @authors https://github.com/eou/php-interpreter
+ * @authors
+ * https://github.com/tharzen/php-interpreter
  * @description
  * The file for single-linked list implementation.
  */

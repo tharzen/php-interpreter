@@ -1,6 +1,6 @@
 /**
  * @authors
- * https://github.com/eou/php-interpreter
+ * https://github.com/tharzen/php-interpreter
  * @description
  * The main entry of evaluator.
  */
@@ -8,7 +8,6 @@
 import { Node as ASTNode } from "../php-parser/src/ast/node";
 import { AST } from "../php-parser/src/index";
 import { Env } from "./environment";
-import { ILocation } from "./memory";
 import { Stack } from "./utils/stack";
 
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
@@ -17,14 +16,14 @@ import { Stack } from "./utils/stack";
 
 /**
  * @param {AST}     ast - abstract syntax tree
- * @param {Map}     env - environments map
- * @param {number}  cur - current environment index
+ * @param {Map}     env - two environments which technically are scopes, global and local
+ * @param {number}  cur - current environment index, 0 for global, 1 for local
  * @param {Stack}   stk - stack keeping a log of the functions which are called during the execution
  * @param {IHeap}   heap - storage, such as variable bindings, function declaration, class declaration, namespace location and etc.
  */
 export class Evaluator {
     public ast: AST;
-    public env: Map<number, Env>;
+    public env: Env[];
     public cur: number;
     public stk: Stack<IStkNode>;
     public heap: IHeap;
@@ -91,8 +90,7 @@ export class Evaluator {
 
     constructor(ast: AST) {
         this.ast = ast;
-        this.env = new Map();
-        this.env.set(0, new Env());     // global environment
+        this.env = Env[2];
         this.cur = 0;
         this.stk = new Stack<IStkNode>();
         this.heap = {
@@ -104,19 +102,31 @@ export class Evaluator {
 
 Evaluator.prototype.run = function() {
     // the root node of AST is "Program", its children field contains the expressions we'll evaluate
-    this.ast.children.forEach((child: Node) => {
-        const stknode: IStkNode = { node: child, val: undefined };
+    for (let i = this.ast.children.length - 1; i >= 0; i--) {
+        const stknode: IStkNode = {
+            data: this.ast.children[i],
+            inst: null,
+            kind: StkNodeKind.ast,
+        };
         this.stk.push(stknode);
+    }
+    while (this.stk.length() > 0) {
         this.evaluate();
-    });
+    }
 };
 
 Evaluator.prototype.evaluate = function() {
     // each time evaluate top element of stack
-    const expr: ASTNode = this.stk.top.value.node; this.stk.pop();
+    const topNode = this.stk.top.value; this.stk.pop();
+    if (topNode.kind !== StkNodeKind.ast) {
+        throw new Error("Eval Error: Evaluate wrong node: " + topNode.kind + ", should be a AST node");
+    }
+
+    const expr: ASTNode = topNode.data;
     if (expr.kind === "expressionstatement") {
         switch (expr.expression.kind) {
-            // `[1,2];` `"abc";` `1.6;` actually do nothing before the sequence point so don't need to evaluate
+            // A statement with only a scalar type data such as: `[1,2];` `"abc";` `1.6;` actually do nothing before the sequence point
+            // so we don't need to evaluate it
             // if it might be evaluated, it will be treated as a rval which we need its value,
             // such as `$a[];` will throw reading fatal error in offical Zend PHP interpreter
             case "array":
@@ -125,17 +135,33 @@ Evaluator.prototype.evaluate = function() {
             case "boolean":
                 break;
             case "assign": {
+                const instNode: IStkNode = {
+                    data: null,
+                    inst: "endOfAssign",
+                    kind: StkNodeKind.indicator,
+                };
+                this.stk.push(instNode);    // insurance
                 const stknode: IStkNode = {
-                    node: expr.expression,
+                    data: expr.expression,
+                    inst: null,
+                    kind: StkNodeKind.ast,
                 };
                 this.stk.push(stknode);
                 this.evaluateAssign();
                 break;
             }
             case "variable": {
-                // declare a new variable or do nothing if it exists
+                const instNode: IStkNode = {
+                    data: null,
+                    inst: "endOfVariable",
+                    kind: StkNodeKind.indicator,
+                };
+                this.stk.push(instNode);    // insurance
+                // declare a new variable or do nothing if it already exists
                 const stknode: IStkNode = {
-                    node: expr.expression,
+                    data: expr.expression,
+                    inst: null,
+                    kind: StkNodeKind.ast,
                 };
                 this.stk.push(stknode);
                 this.evaluateVariable();
@@ -147,42 +173,56 @@ Evaluator.prototype.evaluate = function() {
     } else if (expr.kind === "boolean") {
         // directly evaluate
         const stknode: IStkNode = {
-            val: Boolean(expr.value),
+            data: Boolean(expr.value),
+            inst: null,
+            kind: StkNodeKind.value,
         };
         this.stk.push(stknode);
     } else if (expr.kind === "number") {
         // directly evaluate
         const stknode: IStkNode = {
-            val: Number(expr.value),    // 0x539 == 02471 == 0b10100111001 == 1337e0
+            data: Number(expr.value),    // 0x539 == 02471 == 0b10100111001 == 1337e0
+            inst: null,
+            kind: StkNodeKind.value,
         };
         this.stk.push(stknode);
     } else if (expr.kind === "string") {
         // directly evaluate
         const stknode: IStkNode = {
-            val: String(expr.value),
+            data: String(expr.value),
+            inst: null,
+            kind: StkNodeKind.value,
         };
         this.stk.push(stknode);
     } else if (expr.kind === "assign") {
         const stknode: IStkNode = {
-            node: expr,
+            data: expr,
+            inst: null,
+            kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
         this.evaluateAssign();
     } else if (expr.kind === "variable") {
         const stknode: IStkNode = {
-            node: expr,
+            data: expr,
+            inst: null,
+            kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
         this.evaluateVariable();
     } else if (expr.kind === "array") {
         const stknode: IStkNode = {
-            node: expr,
+            data: expr,
+            inst: null,
+            kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
         this.evaluateArray();
     } else if (expr.kind === "global") {
         const stknode: IStkNode = {
-            node: expr,
+            data: expr,
+            inst: null,
+            kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
         this.evaluateGlobal();
@@ -193,21 +233,6 @@ Evaluator.prototype.evaluate = function() {
 
 /**
  * @description
- * Node in the execution stack. It could be a AST node, an instruction, an operator and a value
- * @param {any} val - Any AST nodes which can be evaluated to a value should store its value here, e.g. 1, true, "abc", { ... }
- * @param {ILocation} loc - Any AST nodes which can be found in memory should store its location here
- * @param {string} inst - instructions, e.g. READ, WRITE
- * @param {ASTNode} node - AST node
- */
-export interface IStkNode {
-    val?: any;
-    loc?: ILocation;
-    inst?: string;
-    node?: ASTNode;
-}
-
-/**
- * @description
  * Storage which used to store any value or information in evaluator
  * @param {Map}    ram - address => any acceptable data type or abstract model
  * @param {number} ptr - address pointer, automatically increase
@@ -215,4 +240,79 @@ export interface IStkNode {
 export interface IHeap {
     ram: Map<number, any>;
     ptr: number;
+}
+
+/**
+ * @description
+ * Stack node kinds, 0 for ast, 1 for value, 2 for address
+ */
+export enum StkNodeKind {
+    ast,
+    value,
+    address,
+    indicator,
+}
+/**
+ * @description
+ * Node in the execution stack. It could be a AST node, an instruction, an operator and a value
+ * @param {StkNodeKind}  kind - Stack node kind, e.g. "ast" => AST node, "address" => address refers to any value in Heap,
+ *                              "value" => any PHP data, "instuct"
+ * @param {any}          data - any data correspond to its kind
+ * @param {string}       inst - any instruction guiding the evaluation actions
+ * @example
+ * { kind: "ast", data: "{...}", inst: "getAddress" }
+ * { kind: "value", data: false, inst: null }
+ * { kind: "address", data: 15073, inst: null }
+ * { kind: "indicator", data: null, inst: "endOfAssign" }
+ * { kind: "indicator", data: null, inst: "+" }
+ */
+export interface IStkNode {
+    kind: StkNodeKind;
+    data: any;
+    inst: string;
+}
+
+/**
+ * @description
+ * Evaluation stack pop API, provides stack node type check
+ * @param {Stack}       stk
+ * @param {StkNodeKind} kindMustBe
+ * @param {string}      astKindMustBe
+ */
+export function evalStkPop(stk: Stack<IStkNode>, kindMustBe: StkNodeKind, astKindMustBe?: string): IStkNode {
+    const node = stk.top.value;
+    switch (kindMustBe) {
+        case StkNodeKind.ast: {
+            if (node.kind !== StkNodeKind.ast) {
+                throw new Error("Eval Error: Evaluate wrong node: " + node.kind + ", should contain AST node");
+            } else if (astKindMustBe) {
+                if (node.data.kind !== astKindMustBe) {
+                    throw new Error("Eval Error: Evaluate wrong AST node: " + node.data.kind + ", should be " + astKindMustBe);
+                }
+            }
+            break;
+        }
+        case StkNodeKind.value: {
+            if (node.kind !== StkNodeKind.value) {
+                throw new Error("Eval Error: Evaluate wrong node: " + node.kind + ", should contain value");
+            }
+            break;
+        }
+        case StkNodeKind.address: {
+            if (node.kind !== StkNodeKind.address) {
+                throw new Error("Eval Error: Evaluate wrong node: " + node.kind + ", should contain address");
+            }
+            break;
+        }
+        case StkNodeKind.indicator: {
+            if (node.kind !== StkNodeKind.indicator) {
+                throw new Error("Eval Error: Evaluate wrong node: " + node.kind + ", should contain indicator");
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    stk.pop();
+    return node;
 }
