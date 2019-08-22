@@ -1,61 +1,134 @@
-// import fs = require("fs");
-// import util = require("util");
-// import engine = require("../interpreter/php-parser/src/index");
+var util = require("util");
 
-// const parser: any = new engine({
-//     // options
-//     ast: {
-//         withPositions: true,
-//     },
-//     parser: {
-//         locations: true,
-//     },
-// });
+let a = {
+    kind: "program",
+    loc: {
+        source: null,
+        start: {
+            line: 1,
+            "column": 0,
+            offset: 0
+        },
+        "end": {
+            line: 2,
+            "column": 12,
+            offset: 18
+        }
+    },
+    "children": [
+        {
+            kind: "expressionstatement",
+            loc: {
+                source: null,
+                start: {
+                    line: 2,
+                    "column": 0,
+                    offset: 6
+                },
+                "end": {
+                    line: 2,
+                    "column": 12,
+                    offset: 18
+                }
+            },
+            "expression": {
+                kind: "assign",
+                loc: {
+                    source: null,
+                    start: {
+                        line: 2,
+                        "column": 0,
+                        offset: 6
+                    },
+                    "end": {
+                        line: 2,
+                        "column": 12,
+                        offset: 18
+                    }
+                },
+                operator: "=",
+                "left": {
+                    kind: "variable",
+                    loc: {
+                        source: null,
+                        start: {
+                            line: 2,
+                            "column": 0,
+                            offset: 6
+                        },
+                        "end": {
+                            line: 2,
+                            "column": 2,
+                            offset: 8
+                        }
+                    },
+                    name: "a",
+                    "byref": false,
+                    curly: false
+                },
+                right: {
+                    kind: "bin",
+                    loc: {
+                        source: null,
+                        start: {
+                            line: 2,
+                            "column": 5,
+                            offset: 11
+                        },
+                        "end": {
+                            line: 2,
+                            "column": 11,
+                            offset: 17
+                        }
+                    },
+                    type: "+",
+                    "left": {
+                        kind: "variable",
+                        loc: {
+                            source: null,
+                            start: {
+                                line: 2,
+                                "column": 5,
+                                offset: 11
+                            },
+                            "end": {
+                                line: 2,
+                                "column": 7,
+                                offset: 13
+                            }
+                        },
+                        name: "b",
+                        "byref": false,
+                        curly: false
+                    },
+                    right: {
+                        kind: "number",
+                        loc: {
+                            source: null,
+                            start: {
+                                line: 2,
+                                "column": 10,
+                                offset: 16
+                            },
+                            "end": {
+                                line: 2,
+                                "column": 11,
+                                offset: 17
+                            }
+                        },
+                        value: "1"
+                    }
+                }
+            }
+        }
+    ],
+    errors: [],
+    comments: []
+};
 
-// // Retrieve the AST from the specified source
-// // var eval = parser.parseEval('echo "My first PHP script!";');
-// const phpFile = fs.readFileSync(__dirname + "/myTest.php");
+let b = {
+    xx: {},
+}
+Object.assign(b.xx, a);
 
-// const ast = parser.parseCode(phpFile.toString());
-// // console.log(util.inspect(parser, { depth: null }));
-// console.log(util.inspect(ast, { depth: null }));
-
-// let a = { b: { key: { val : 2}}, x : { bug: { e: "123" }, bug2: { d : ""} }};
-// // let c = { ... a, b: { ... a.b}};
-// let c = JSON.parse(JSON.stringify(a));
-// console.log(a);
-// console.log(c);
-// c.b.key.val = 666;
-// console.log(a);
-// console.log(c);
-// c.x.bug.e = "???";
-// console.log(a);
-// console.log(c);
-
-// type x = [boolean, boolean];
-// let a: x = [true, true];
-// a[1] = false;
-// console.log(a);
-
-// function x(a: string, b: boolean) {
-//     console.log(a);
-//     console.log(b);
-// }
-
-// x("1", "2");
-
-// enum NodeKind {
-//     ast = "ast",
-//     value = "value",
-//     address = "address",
-//     instruction = "instruction",
-// }
-// interface IStkNode {
-//     kind: NodeKind;
-//     data: any;
-// }
-
-// let n: IStkNode = {
-//     kind: NodeKind.ast,
-//     data: null,
-// };
+console.log(util.inspect(b, { depth: null }));

@@ -51,11 +51,9 @@ import { setValue } from "../memory";
  * $a = new foo;
  */
 Evaluator.prototype.evaluateAssign = function() {
-    // split the top element into seperate steps, | left => right => operator |
     const assignNode = evalStkPop(this.stk, StkNodeKind.ast, "assign");
 
-    // ATTENTION: for the unparser purpose, the source code of AST in php-parser has been changed
-    // the `operator.sign` is the operator
+    // ❗️ATTENTION: for the unparser, the AST in php-parser has been changed, the `operator.sign` should be the operator
     if (assignNode.data.operator.sign === "=") {
         // $a = 1;
         // operator
@@ -64,47 +62,81 @@ Evaluator.prototype.evaluateAssign = function() {
             inst: assignNode.data.operator,
             kind: StkNodeKind.indicator,
         });
-        // rval, we simply need its value
-        this.stk.push({
-            data: assignNode.data.right,
-            inst: "getValue",
-            kind: StkNodeKind.ast,
-        });
+        // rval, if it is not byref, we need its value, otherwise we need its address
+        if (assignNode.data.right.byref !== undefined && assignNode.data.right.byref) {
+            // address
+            this.stk.push({
+                data: assignNode.data.right,
+                inst: "getAddress",
+                kind: StkNodeKind.ast,
+            });
+        } else {
+            this.stk.push({
+                data: assignNode.data.right,
+                inst: "getValue",
+                kind: StkNodeKind.ast,
+            });
+        }
         // lval: an expression that designates a location that can store a value
         this.stk.push({
             data: assignNode.data.left,
             inst: "getAddress",
             kind: StkNodeKind.ast,
         });
-        // stack bottom => endOfAssign => '=' => right expr => left expr
+        // 🎈stack bottom => endOfAssign => '=' => right expr => left expr
 
         // evaluate left expressions and then push the address back into stack
         this.evaluate();
-        let leftAddress = evalStkPop(this.stk, StkNodeKind.address);
+        let leftResult = evalStkPop(this.stk, StkNodeKind.address);
         const rightNode = this.stk.top.value; this.stk.pop();
-        this.stk.push(leftAddress);
+        this.stk.push(leftResult);
         this.stk.push(rightNode);
-        // stack bottom => endOfAssign => '=' => address => right expr
+        // 🎈stack bottom => endOfAssign => '=' => address => right expr
 
         // evaluate right expressions and then push the value back into stack
         this.evaluate();
-        const rightValue = evalStkPop(this.stk, StkNodeKind.value);     // value
-        leftAddress = evalStkPop(this.stk, StkNodeKind.address);        // address
-        const operator = evalStkPop(this.stk, StkNodeKind.indicator);   // =
+        let rightResult = null;
+        if (this.stk.top.value.kind === StkNodeKind.value) {
+            // non-byref assignment
+            rightResult = evalStkPop(this.stk, StkNodeKind.value);          // value
+            leftResult = evalStkPop(this.stk, StkNodeKind.address);         // address
+            evalStkPop(this.stk, StkNodeKind.indicator, undefined, "=");    // =
+            // assignment
+            setValue(this.heap, leftResult.data.vslotAddr, rightResult);
+        } else if (this.stk.top.value.kind === StkNodeKind.address) {
+            // byref assignment
+            rightResult = evalStkPop(this.stk, StkNodeKind.address);       // address
+            leftResult = evalStkPop(this.stk, StkNodeKind.address);        // address
+            evalStkPop(this.stk, StkNodeKind.indicator, undefined, "=");   // =
+            const leftVslot = this.heap.ram.get(leftResult.data.vslotAddr);
+            leftVslot.vstoreAddr = rightResult.data.vstoreAddr;
+        }
 
-        // assignment
-        setValue(this.heap, leftAddress.data.vslotAddr, rightValue);
+        // check the expression end
+        if (this.stk.top.value.inst === "endOfAssign") {
+            this.stk.pop();
+        } else {
+            this.stk.push(rightResult);      // for next possible evaluation
+        }
+        this.evaluate();
     } else {
         // if it is compound assignment operators, we convert it into common '=' operator, such as $a += 1 => $a = $a + 1
-        const newExp = { kind: null, left: null, right: null, operator: null };
-        Object.assign(newExp, assignNode.data);   // deep copy old expression
-        newExp.operator = "=";
+        // $a += &$c;
+        if (assignNode.data.right.byref !== undefined && assignNode.data.right.byref) {
+            throw new Error("Parse error: syntax error, unexpected '&'");   // not included in php-parser right now
+        }
 
-        const newRightNode = { kind: null, type: null, left: null, right: null };
+        const newExp = { kind: "", left: {}, right: {}, operator: ""};
+        Object.assign(newExp, assignNode.data);   // deep copy old expression
+        newExp.kind = "assign";
+        newExp.operator = "=";
+        Object.assign(newExp.left, assignNode.data.left);
+
+        const newRightNode = { kind: "", type: "", left: {}, right: {} };
         newRightNode.kind = "bin";
         newRightNode.type = assignNode.data.operator.sign.split("=")[0];
         newRightNode.left = new ASTNode();
-        Object.assign(newRightNode.left, newExp.left);
+        Object.assign(newRightNode.left, assignNode.data.left);
         Object.assign(newRightNode.right, assignNode.data.right);
         newExp.right = newRightNode;
 

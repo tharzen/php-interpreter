@@ -279,7 +279,7 @@ export interface IStkNode {
  * @param {StkNodeKind} kindMustBe
  * @param {string}      astKindMustBe
  */
-export function evalStkPop(stk: Stack<IStkNode>, kindMustBe: StkNodeKind, astKindMustBe?: string): IStkNode {
+export function evalStkPop(stk: Stack<IStkNode>, kindMustBe: StkNodeKind, astKindMustBe?: string, indicatorMustBe?: string): IStkNode {
     const node = stk.top.value;
     switch (kindMustBe) {
         case StkNodeKind.ast: {
@@ -307,6 +307,10 @@ export function evalStkPop(stk: Stack<IStkNode>, kindMustBe: StkNodeKind, astKin
         case StkNodeKind.indicator: {
             if (node.kind !== StkNodeKind.indicator) {
                 throw new Error("Eval Error: Evaluate wrong node: " + node.kind + ", should contain indicator");
+            } else if (indicatorMustBe) {
+                if (node.inst !== indicatorMustBe) {
+                    throw new Error("Eval Error: Evaluate wrong indicator: " + node.inst + ", indicator should be " + indicatorMustBe);
+                }
             }
             break;
         }
