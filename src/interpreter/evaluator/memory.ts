@@ -113,18 +113,39 @@ import { Node as ASTNode } from "../php-parser/src/ast/node";
 
 /**
  * @description
+ * Parameter abstract model
+ * @param {string} name - parameter name
+ * @param {any} value - parameter value, maybe ASTNode
+ * @param {ASTNode} type - parameter type: https://www.php.net/manual/en/functions.arguments.php#functions.arguments.type-declaration
+ * @param {boolean} byref - if the parameter passed by reference
+ * @param {boolean} variadic - simliar with spread opt. https://www.php.net/manual/en/functions.arguments.php#functions.variable-arg-list
+ * @param {boolean} nullable - allow pass null other than a variable
+ */
+export interface IParameter {
+    name: string;
+    value: any;
+    type: ASTNode;
+    byref: boolean;
+    variadic: boolean;
+    nullable: boolean;
+}
+
+/**
+ * @description
  * Function or Closure type abstract model
  * @param {string} type - function, closure, method
  * @param {string} name - if it is a closure, it has no name, leave this field as ""
  * @param {string[]} args - arguments
  * @param {ASTNode} body - AST node
+ * @param {boolean} byref - if return a reference: https://www.php.net/manual/en/language.references.return.php
  * @param {Map} st - symbol table stores static variables
  */
 export interface IFunction {
     type: string;
     name: string;
-    args: string[];
+    args: IParameter[];
     body: ASTNode;
+    byref: boolean;
     st: Map<string, number>;
 }
 
@@ -137,6 +158,19 @@ export interface IFunction {
 export interface IMethod extends IFunction {
     modifiers: modifiers;
     _class: string;
+}
+
+/**
+ * @description
+ * Closure type abstract model
+ * @param {boolean} _static - static anonymous function
+ * @param {ASTNode} use - use variables in parent scope: https://www.php.net/manual/en/functions.anonymous.php
+ * Closures may also inherit variables from the parent scope.
+ * Any such variables must be passed to the `use` language construct.
+ */
+export interface IClosure extends IFunction {
+    _static: boolean;
+    use: ASTNode[];
 }
 
 /**
@@ -176,6 +210,7 @@ export interface IClass {
     type: string;
     name: string;
     _extend: string;
+    _constant: Map<string, number>;
     _property: Map<string, number>;
     _method: Map<string, number>;
 }

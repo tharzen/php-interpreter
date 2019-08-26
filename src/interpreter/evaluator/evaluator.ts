@@ -36,6 +36,12 @@ export class Evaluator {
 
     /**
      * @description
+     * Reorder the expressions, lift some of them, such as, functions are global
+     */
+    public lift: () => ASTNode[];
+
+    /**
+     * @description
      * The main entry for evaluation
      */
     public evaluate: () => void;
@@ -55,6 +61,22 @@ export class Evaluator {
      * evaluator/evaluation/array.ts
      */
     public evaluateArray: () => void;
+
+    /**
+     * @description
+     * Evaluate anonymous function
+     * @file
+     * evaluator/evaluation/closure.ts
+     */
+    public evaluateClosure: () => void;
+
+    /**
+     * @description
+     * Evaluate user-defined function
+     * @file
+     * evaluator/evaluation/function.ts
+     */
+    public evaluateFunction: () => void;
 
     /**
      * @description
@@ -101,18 +123,70 @@ export class Evaluator {
 }
 
 Evaluator.prototype.run = function() {
-    // the root node of AST is "Program", its children field contains the expressions we'll evaluate
-    for (let i = this.ast.children.length - 1; i >= 0; i--) {
-        const stknode: IStkNode = {
-            data: this.ast.children[i],
-            inst: null,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
+    // the root node of AST is "Program", its children field contains all expressions needed to be evaluated,
+    // before pushing to stack, we need to LIFT some statements such as all functions,
+    // classes without extends / implements / use, and all traits, all interfaces
+    const reorderAST = this.lift();
+    for (const astNode of reorderAST) {
+        this.stk.push(astNode);
     }
     while (this.stk.length() > 0) {
         this.evaluate();
     }
+};
+
+Evaluator.prototype.lift = function(): ASTNode[] {
+    const reorderAST: ASTNode[] = [];
+    this.ast.children.forEach((child: ASTNode) => {
+        switch (child.kind) {
+            case "function":
+            case "trait":
+            case "interface": {
+                const stknode: IStkNode = {
+                    data: child,
+                    inst: null,
+                    kind: StkNodeKind.ast,
+                };
+                this.stk.push(stknode);
+                // evaluate them and save their declaration into heap
+                this.evaluate();
+                break;
+            }
+            case "class": {
+                if (child.extends !== null || child.implements !== null) {
+                    reorderAST.push(child);     // not normal class, do nothing
+                } else {
+                    let useTrait = false;
+                    for (const classElt of child.body) {
+                        if (classElt.kind === "traituse") {
+                            useTrait = true;
+                            break;
+                        }
+                    }
+                    if (useTrait) {
+                        reorderAST.push(child);     // not normal class, do nothing
+                    } else {
+                        // lift
+                        const stknode: IStkNode = {
+                            data: child,
+                            inst: null,
+                            kind: StkNodeKind.ast,
+                        };
+                        this.stk.push(stknode);
+                        // evaluate class and save declaration into heap
+                        this.evaluate();
+                        break;
+                    }
+                }
+                break;
+            }
+            default: {
+                reorderAST.push(child);     // do nothing
+                break;
+            }
+        }
+    });
+    return reorderAST;
 };
 
 Evaluator.prototype.evaluate = function() {
@@ -124,6 +198,7 @@ Evaluator.prototype.evaluate = function() {
 
     const expr: ASTNode = topNode.data;
     if (expr.kind === "expressionstatement") {
+        // statements with a sequence point which followed a ';'
         switch (expr.expression.kind) {
             // A statement with only a scalar type data such as: `[1,2];` `"abc";` `1.6;` actually do nothing before the sequence point
             // so we don't need to evaluate it
@@ -137,7 +212,7 @@ Evaluator.prototype.evaluate = function() {
             case "assign": {
                 const instNode: IStkNode = {
                     data: null,
-                    inst: "endOfAssign",
+                    inst: "endAssign",
                     kind: StkNodeKind.indicator,
                 };
                 this.stk.push(instNode);    // insurance
@@ -153,7 +228,7 @@ Evaluator.prototype.evaluate = function() {
             case "variable": {
                 const instNode: IStkNode = {
                     data: null,
-                    inst: "endOfVariable",
+                    inst: "endVariable",
                     kind: StkNodeKind.indicator,
                 };
                 this.stk.push(instNode);    // insurance
@@ -218,6 +293,30 @@ Evaluator.prototype.evaluate = function() {
         };
         this.stk.push(stknode);
         this.evaluateArray();
+    } else if (expr.kind === "function") {
+        const stknode: IStkNode = {
+            data: expr,
+            inst: null,
+            kind: StkNodeKind.ast,
+        };
+        this.stk.push(stknode);
+        this.evaluateFunction();
+    } else if (expr.kind === "closure") {
+        const stknode: IStkNode = {
+            data: expr,
+            inst: null,
+            kind: StkNodeKind.ast,
+        };
+        this.stk.push(stknode);
+        this.evaluateClosure();
+    } else if (expr.kind === "method") {
+        const stknode: IStkNode = {
+            data: expr,
+            inst: null,
+            kind: StkNodeKind.ast,
+        };
+        this.stk.push(stknode);
+        this.evaluateMethod();
     } else if (expr.kind === "global") {
         const stknode: IStkNode = {
             data: expr,
@@ -263,7 +362,7 @@ export enum StkNodeKind {
  * { kind: "ast", data: "{...}", inst: "getAddress" }
  * { kind: "value", data: false, inst: null }
  * { kind: "address", data: 15073, inst: null }
- * { kind: "indicator", data: null, inst: "endOfAssign" }
+ * { kind: "indicator", data: null, inst: "endAssign" }
  * { kind: "indicator", data: null, inst: "+" }
  */
 export interface IStkNode {

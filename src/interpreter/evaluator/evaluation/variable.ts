@@ -8,7 +8,7 @@
  * https://github.com/php/php-langspec/blob/master/spec/07-variables.md
  */
 
-import util = require("util");  // for test
+import { Node as ASTNode } from "../../php-parser/src/ast/node";
 import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
 import { getValue, ILocation, IVSlot, IVStore  } from "../memory";
 
@@ -24,7 +24,7 @@ import { getValue, ILocation, IVSlot, IVStore  } from "../memory";
  * Class and interface constant.    "classconstant"
  */
 Evaluator.prototype.evaluateVariable = function() {
-    const varNode = evalStkPop(this.stk, StkNodeKind.value, "variable");
+    const varNode: ASTNode = evalStkPop(this.stk, StkNodeKind.value, "variable");
 
     // find the variable in current env
     let varEnv = this.env[this.cur];

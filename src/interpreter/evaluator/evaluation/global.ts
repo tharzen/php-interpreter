@@ -8,7 +8,7 @@
  * https://github.com/php/php-langspec/blob/master/spec/07-variables.md#global-variables
  */
 
-import { Node } from "../../php-parser/src/ast/node";
+import { Node as ASTNode } from "../../php-parser/src/ast/node";
 import { evalStkPop, Evaluator, StkNodeKind } from "../evaluator";
 import { IVSlot, IVStore } from "../memory";
 
@@ -26,11 +26,11 @@ import { IVSlot, IVStore } from "../memory";
  * respectively, of each global variable currently defined.
  */
 Evaluator.prototype.evaluateGlobal = function() {
-    const globalNode = evalStkPop(this.stk, StkNodeKind.ast, "global");
+    const globalNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "global");
 
     const varEnv = this.env[this.cur];
     const globalEnv = this.env[0];
-    globalNode.data.items.forEach((varname: Node) => {
+    globalNode.data.items.forEach((varname: ASTNode) => {
         const globalVslot: number = globalEnv.st._var.get(varname);     // get the address in Heap
         let vslotAddr: number;
         if (globalVslot === undefined) {

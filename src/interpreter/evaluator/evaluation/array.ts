@@ -9,7 +9,7 @@
  * https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#array-creation-operator
  */
 
-import { Node } from "../../php-parser/src/ast/node";
+import { Node as ASTNode } from "../../php-parser/src/ast/node";
 import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
 import { IArray } from "../memory";
 
@@ -24,23 +24,22 @@ import { IArray } from "../memory";
  * [4, 6 => "123"];
  */
 Evaluator.prototype.evaluateArray = function() {
-
-    const arrayNode = evalStkPop(this.stk, StkNodeKind.ast, "array");
+    const arrayNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "array");
 
     // `[1,2] = ...;` is illegal because this is a temporary value not in memory
     if (arrayNode.inst !== undefined && arrayNode.inst === "getAddress") {
         throw new Error("Fatal error: Assignments can only happen to writable values.");
     }
 
-    // evaluate array to IArray abstract model, a temporary value
-    const arrayVal: IArray = {
+    // evaluate array to IArray abstract model, a temporary object
+    const arrayObj: IArray = {
         elt: new Map(),
         idx: 0,
         type: "array",
     };
 
     traverseArrayLoop:
-    for (let i = 0, item: Node = arrayNode.data.items[i]; i < arrayNode.data.items.length; i++) {
+    for (let i = 0, item: ASTNode = arrayNode.data.items[i]; i < arrayNode.data.items.length; i++) {
         /**
          * For multi-line arrays on the other hand the trailing comma is commonly used,
          * as it allows easier addition of new elements at the end. In this way AST node could be null.
@@ -73,7 +72,7 @@ Evaluator.prototype.evaluateArray = function() {
             switch (typeof key) {
                 case "boolean": {
                     key = Number(key);
-                    arrayVal.idx = key >= arrayVal.idx ? key + 1 : arrayVal.idx;
+                    arrayObj.idx = key >= arrayObj.idx ? key + 1 : arrayObj.idx;
                     break;
                 }
                 case "string": {
@@ -81,14 +80,14 @@ Evaluator.prototype.evaluateArray = function() {
                     const validDecInt = /^(|[-]?0|-[1-9][0-9]*)$/;    // "010" × | "10.0" × | "-10" √ | "-0" √ | "+0" ×
                     if (validDecInt.test(key)) {
                         key = Number(key);
-                        arrayVal.idx = key >= arrayVal.idx ? key + 1 : arrayVal.idx;
+                        arrayObj.idx = key >= arrayObj.idx ? key + 1 : arrayObj.idx;
                     }
                     break;
                 }
                 case "number": {
                     key = Math.trunc(key);  // 0 maybe 0, +0, -0
                     key = key === -0 ? 0 : key;
-                    arrayVal.idx = key >= arrayVal.idx ? key + 1 : arrayVal.idx;
+                    arrayObj.idx = key >= arrayObj.idx ? key + 1 : arrayObj.idx;
                     break;
                 }
                 case "object": {
@@ -115,7 +114,7 @@ Evaluator.prototype.evaluateArray = function() {
             this.evaluate();
             const valNode = evalStkPop(this.stk, StkNodeKind.value);
             const val = valNode.data;
-            arrayVal.elt.set(key, val);
+            arrayObj.elt.set(key, val);
         } else {
             // could be single number, string, boolean, null, IArray, IObject, IFunction (closure)
             this.stk.push({
@@ -126,14 +125,14 @@ Evaluator.prototype.evaluateArray = function() {
             this.evaluate();
             const valNode = evalStkPop(this.stk, StkNodeKind.value);
             const val = valNode.data;
-            arrayVal.elt.set(arrayVal.idx, val);
-            arrayVal.idx += 1;
+            arrayObj.elt.set(arrayObj.idx, val);
+            arrayObj.idx += 1;
         }
     }
 
     // need to push the result to the stack for possible next evaluation
     const stknode: IStkNode = {
-        data: arrayVal,
+        data: arrayObj,
         inst: null,
         kind: StkNodeKind.value,
     };

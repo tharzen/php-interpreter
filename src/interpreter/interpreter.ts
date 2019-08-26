@@ -39,13 +39,18 @@ class Interpreter {
 
 Interpreter.prototype.run = function() {
     // initialize parser
-    const parser = new Parser({ast: { withPositions: true }, parser: { locations: true }});
-    // preset some options such as from `php.ini`: this.ini and then evaluate AST
+    const parser = new Parser({
+        ast: {
+            withPositions: true,
+        },
+        parser: {
+            locations: true,
+        },
+    });
+    // TODO: preset some options such as from `php.ini`: this.ini and then evaluate AST
     this.ast = parser.parseCode(this.src);
     this.evl = new Evaluator(this.ast);
-    if (this.ast.children.length > 0) {
-        this.evl.run();
-    }
+    this.evl.run();
 };
 
 export { Interpreter };

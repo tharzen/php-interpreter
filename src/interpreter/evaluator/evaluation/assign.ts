@@ -8,7 +8,6 @@
  * https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#assignment-operators
  */
 
-import util = require("util");  // for test
 import { Node as ASTNode } from "../../php-parser/src/ast/node";
 import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
 import { setValue } from "../memory";
@@ -51,9 +50,9 @@ import { setValue } from "../memory";
  * $a = new foo;
  */
 Evaluator.prototype.evaluateAssign = function() {
-    const assignNode = evalStkPop(this.stk, StkNodeKind.ast, "assign");
+    const assignNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "assign");
 
-    // ❗️ATTENTION: for the unparser, the AST in php-parser has been changed, the `operator.sign` should be the operator
+    // ❗️ATTENTION: for the unparser, the original AST in php-parser has been changed, the `operator.sign` should be the operator
     if (assignNode.data.operator.sign === "=") {
         // $a = 1;
         // operator
@@ -83,7 +82,7 @@ Evaluator.prototype.evaluateAssign = function() {
             inst: "getAddress",
             kind: StkNodeKind.ast,
         });
-        // 🎈stack bottom => endOfAssign => '=' => right expr => left expr
+        // 🎈stack bottom => endAssign => '=' => right expr => left expr
 
         // evaluate left expressions and then push the address back into stack
         this.evaluate();
@@ -91,7 +90,7 @@ Evaluator.prototype.evaluateAssign = function() {
         const rightNode = this.stk.top.value; this.stk.pop();
         this.stk.push(leftResult);
         this.stk.push(rightNode);
-        // 🎈stack bottom => endOfAssign => '=' => address => right expr
+        // 🎈stack bottom => endAssign => '=' => address => right expr
 
         // evaluate right expressions and then push the value back into stack
         this.evaluate();
@@ -113,7 +112,7 @@ Evaluator.prototype.evaluateAssign = function() {
         }
 
         // check the expression end
-        if (this.stk.top.value.inst === "endOfAssign") {
+        if (this.stk.top.value.inst === "endAssign") {
             this.stk.pop();
         } else {
             this.stk.push(rightResult);      // for next possible evaluation
@@ -122,7 +121,7 @@ Evaluator.prototype.evaluateAssign = function() {
     } else {
         // if it is compound assignment operators, we convert it into common '=' operator, such as $a += 1 => $a = $a + 1
         // $a += &$c;
-        // TODO: this error should be throwed from 'bin'
+        // TODO: this error should be throwed from 'bin' evaluation
         if (assignNode.data.right.byref !== undefined && assignNode.data.right.byref) {
             throw new Error("Parse error: syntax error, unexpected '&'");   // not included in php-parser right now
         }

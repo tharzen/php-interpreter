@@ -17,11 +17,11 @@
  * Without any namespace definition, all classes and functions definition are placed into the global space
  */
 export class Env {
-    public name: string;                    // environment name
-    public type: string;                    // environment type
-    public out: number;                  // outer environment
-    public sub: number[];                // sub environment, evaluator.env.get(...)
-    public st: ISymbolTable;       // symbol table
+    public name: string;            // environment name
+    public type: string;            // environment type
+    public out: number;             // outer environment
+    public sub: number[];           // sub environment, evaluator.env.get(...)
+    public st: ISymbolTable;        // symbol table
 }
 
 /**

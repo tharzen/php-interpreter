@@ -8,7 +8,7 @@
  * https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#subscript-operator
  */
 
-import { Node } from "../../php-parser/src/ast/node";
+import { Node as ASTNode } from "../../php-parser/src/ast/node";
 import { Evaluator, IStkNode } from "../evaluator";
 
 /**
@@ -23,7 +23,7 @@ import { Evaluator, IStkNode } from "../evaluator";
  * A subscript-expression designates a (possibly non-existent) element of an array or string or object of a type that implements `ArrayAccess`.
  */
 Evaluator.prototype.evaluateOffset = function() {
-    const offsetNode = this.stk.top.value; this.stk.pop();
+    const offsetNode: ASTNode = this.stk.top.value; this.stk.pop();
     if (offsetNode.node.kind !== "offsetlookup") {
         throw new Error("Eval Error: Evaluate wrong AST node: " + offsetNode.node.kind + ", should be offsetlookup");
     }
@@ -64,7 +64,7 @@ Evaluator.prototype.evaluateOffset = function() {
         } else {
             // evaluate 'offset' which is a key in the deref, and it should be integer or string
             this.evaluate();
-            const keyNode: Node = this.stk.top.value; this.stk.pop();
+            const keyNode: ASTNode = this.stk.top.value; this.stk.pop();
             let offsetName = keyNode.val;
             if (offsetName !== undefined) {
                 if (typeof offsetName !== "number" && typeof offsetName !== "boolean" && typeof offsetName !== "string") {
