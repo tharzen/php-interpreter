@@ -9,7 +9,8 @@
  */
 
 import { Node as ASTNode } from "../../php-parser/src/ast/node";
-import { Evaluator, IStkNode } from "../evaluator";
+import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
+import { createVariable } from "../memory";
 
 /**
  * @description
@@ -23,49 +24,60 @@ import { Evaluator, IStkNode } from "../evaluator";
  * A subscript-expression designates a (possibly non-existent) element of an array or string or object of a type that implements `ArrayAccess`.
  */
 Evaluator.prototype.evaluateOffset = function() {
-    const offsetNode: ASTNode = this.stk.top.value; this.stk.pop();
-    if (offsetNode.node.kind !== "offsetlookup") {
-        throw new Error("Eval Error: Evaluate wrong AST node: " + offsetNode.node.kind + ", should be offsetlookup");
-    }
+    const offsetNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "offsetlookup");
 
     // `$a = $b[];`, `$b[$a[]] = 1;` is illegal
-    if ((offsetNode.inst === undefined || offsetNode.inst !== "WRITE")
+    if ((offsetNode.inst === undefined || offsetNode.inst !== "getAddress")
         && !offsetNode.node.offset) {
         throw new Error("Fatal error:  Cannot use [] for reading.");
     }
 
-    const stknode: IStkNode = {};
-    const inst = offsetNode.inst;   // READ or WRITE
+    const stknode: IStkNode = {
+        data: null,
+        inst: null,
+        kind: null,
+    };
+    const inst = offsetNode.inst;   // getValue or getAddress
 
-    if (inst === "READ") {
+    if (inst === "getValue") {
         /**
          * READ
          * if `$a[1][2]` doesnt exist, it will print notice: Undefined variable: a and then return null, it won't create any new array
          */
         if (offsetNode.node.offset) {
             // could be false, e.g. $a[] = 1;
-            this.stk.push({ node: offsetNode.node.offset, inst: "READ" });   // read offset value, e.g. $a, $a[1],
+            this.stk.push({
+                data: offsetNode.data.offset,
+                inst: "getValue",
+                kind: StkNodeKind.ast,
+            });   // read offset value, e.g. $a, $a[1],
         }
-        this.stk.push({ node: offsetNode.node.what, inst: "READ" });
+        this.stk.push({
+            data: offsetNode.node.what,
+            inst: "getValue",
+            kind: StkNodeKind.ast,
+        });
+
         // evaluate 'what' which is the deref name, a "variable" or "array" or "string" AST node
         this.evaluate();
         const derefNode = this.stk.top.value; this.stk.pop();
-        if (derefNode.val === undefined) {
-            // cannot find this array or string
+        if (derefNode.data === undefined) {
+            // cannot find this array or string, need to throw a warning
             console.error("Notice: Undefined variable " + offsetNode.node.what.name);
-            stknode.val = null;
+            stknode.data = null;
             this.stk.push(stknode);
             return;
-        } else if (derefNode.val === null) {
+        } else if (derefNode.data === null) {
             // do nothing
-            stknode.val = null;
+            stknode.data = null;
             this.stk.push(stknode);
             return;
         } else {
+            // array or string exists
             // evaluate 'offset' which is a key in the deref, and it should be integer or string
             this.evaluate();
             const keyNode: ASTNode = this.stk.top.value; this.stk.pop();
-            let offsetName = keyNode.val;
+            let offsetName = keyNode.data;
             if (offsetName !== undefined) {
                 if (typeof offsetName !== "number" && typeof offsetName !== "boolean" && typeof offsetName !== "string") {
                     console.error("Warning: Illegal offset type " + offsetName);    // only warning but not terminate program
@@ -92,12 +104,15 @@ Evaluator.prototype.evaluateOffset = function() {
                         break;
                 }
             }
-            if (typeof derefNode.val === "boolean" || typeof derefNode.val === "number") {
-                // surprisingly, PHP won't throw any errors when you try to get an offset element from a number or boolean
-                stknode.val = null;
+            if (typeof derefNode.data === "boolean" || typeof derefNode.data === "number") {    // illegal type
+                /**
+                 * $a = false; $c = $a[3]; // $c is a new variable which assigned with null
+                 * ❗️Surprisingly, PHP won't throw any errors when you try to get an offset element from a number or boolean
+                 */
+                stknode.data = null;
                 this.stk.push(stknode);
                 return;
-            } else if (typeof derefNode.val === "string") {
+            } else if (typeof derefNode.data === "string") {    // string
                 // The subscript operator can not be used on a string value in a byRef context
                 if (offsetNode.node.what.byref) {
                     throw new Error("Fatal error:  Uncaught Error: Cannot create references to/from string offsets.");
@@ -107,7 +122,7 @@ Evaluator.prototype.evaluateOffset = function() {
                 if (typeof offsetName === "string") {
                     offsetName = 0;
                 }
-                const str: string = derefNode.val;
+                const str: string = derefNode.data;
                 if (offsetName < 0) {
                     // If the integer is negative, the position is counted backwards from the end of the string
                     offsetName += str.length;
@@ -115,35 +130,44 @@ Evaluator.prototype.evaluateOffset = function() {
                 if (str[offsetName] === undefined) {
                     console.error("Notice: Uninitialized string offset " + offsetName);
                 }
-                stknode.val = str[offsetName];  // if it still out of bound, there will be a undefined
+                stknode.data = str[offsetName];  // if it still out of bound, there will be a undefined
                 this.stk.push(stknode);
                 return;
-            } else if (typeof derefNode.val === "object" && derefNode.val.type === "IArray") {
-                const array = derefNode.val.elt;
+            } else if (typeof derefNode.data === "object" && derefNode.data.type === "IArray") {    // array
+                const array = derefNode.data.elt;
                 if (array.size === 0 || array.get(offsetName) === undefined) {
                     console.error("Notice: Undefined offset: " + offsetName);
-                    stknode.val = null;
+                    stknode.data = null;
                 } else {
-                    stknode.val = array.get(offsetName);
+                    stknode.data = array.get(offsetName);
                 }
                 this.stk.push(stknode);
                 return;
-            } else if (typeof derefNode.val === "object" && derefNode.val.type === "IObject") {
+            } else if (typeof derefNode.data === "object" && derefNode.data.type === "IObject") {   // object
                 // TODO: any objects belonging to a class which implements `ArrayAccess`
             } else {
                 throw new Error("Eval error: undefined dereferencable-expression type in reading offset");
             }
         }
-    } else if (inst === "WRITE") {
+    } else if (inst === "getAddress") {
         /**
          * WRITE
          * if `$a[][1][0]` doesnt exist, it will create a new array then assgin null to it, the empty offset will be 0
          */
         if (offsetNode.node.offset) {
             // could be false, e.g. $a[] = 1;
-            this.stk.push({ node: offsetNode.node.offset, inst: "READ" });   // read offset value, e.g. $a, $a[1],
+            this.stk.push({
+                data: offsetNode.node.offset,
+                inst: "getValue",
+                kind: StkNodeKind.ast,
+            });   // read offset value, e.g. $a, $a[1],
         }
-        this.stk.push({ node: offsetNode.node.what, inst: "WRITE" });   // get the array or string or object's location
+        this.stk.push({
+            data: offsetNode.node.what,
+            inst: "getAddress",
+            kind: StkNodeKind.ast,
+        });   // get the array or string or object's location
+
         // evaluate 'what' which is the deref name, a "variable" or "array" or "string" AST node
         this.evaluate();
         const derefNode = this.stk.top.value; this.stk.pop();
@@ -153,16 +177,18 @@ Evaluator.prototype.evaluateOffset = function() {
         if (offsetNode.node.offset) {
             // evaluate 'offset' which is a key in the deref, and it should be integer or string
             this.evaluate();
-            const keyNode: Node = this.stk.top.value; this.stk.pop();
+            const keyNode: ASTNode = this.stk.top.value; this.stk.pop();
             offsetName = keyNode.val;
             if (offsetName !== undefined) {
                 if (typeof offsetName !== "number" && typeof offsetName !== "boolean" && typeof offsetName !== "string") {
                     if (offsetName === null) {
                         offsetName = "";  // treats null as "" which is [""] => xxx
                     } else {
-                        console.error("Warning: Illegal offset type " + offsetName);    // only warning and do nothing but not terminate program
-                        stknode.loc = undefined;
-                        stknode.inst = "ILOC";  // illegal location, cannot get legal memory location, the evaluator should stop evaluating this part
+                        // illegal location, cannot get legal memory location, the evaluator should stop evaluating this part
+                        console.error("Warning: Illegal offset type " + offsetName);    // only warning and do nothing, not terminate program
+                        stknode.data = undefined;
+                        stknode.kind = StkNodeKind.address;
+                        // stknode.inst = ""; // instruction unsure ???
                         this.stk.push(stknode);
                         return;
                     }
@@ -198,12 +224,12 @@ Evaluator.prototype.evaluateOffset = function() {
         }
 
         // Now there is deref location and offset name, we can get memory location
-        if (typeof derefNode.loc.type === "boolean" || typeof derefNode.loc.type === "number") {
+        if (typeof derefNode.data.type === "boolean" || typeof derefNode.data.type === "number") {
             console.error("Warning:  Cannot use a scalar value as an array");
-            stknode.loc = undefined;
+            stknode.data = undefined;
             this.stk.push(stknode);
             return;
-        } else if (typeof derefNode.loc.type === "string") {
+        } else if (typeof derefNode.data.type === "string") {
             // The subscript operator can not be used on a string value in a byRef context
             if (offsetNode.node.what.byref) {
                 throw new Error("Fatal error:  Uncaught Error: Cannot create references to/from string offsets.");
@@ -213,11 +239,11 @@ Evaluator.prototype.evaluateOffset = function() {
             if (typeof offsetName === "string") {
                 offsetName = 0;
             }
-            if (typeof this.heap.ram.get(derefNode.loc.vstoreAddr).val !== "string") {
+            if (typeof this.heap.ram.get(derefNode.data.vstoreAddr).val !== "string") {
                 throw new Error("Eval Error: wrong type in writing string offset");
             }
 
-            const str: string = this.heap.ram.get(derefNode.loc.vstoreAddr).val;
+            const str: string = this.heap.ram.get(derefNode.data.vstoreAddr).val;
             if (offsetName < 0) {
                 // If the integer is negative, the position is counted backwards from the end of the string
                 offsetName += str.length;
@@ -227,75 +253,69 @@ Evaluator.prototype.evaluateOffset = function() {
                 }
             }
 
-            const loc = derefNode.loc;
+            const loc = derefNode.data;
             loc.offset = offsetName;
-            stknode.loc = loc;
+            stknode.data = loc;
+            stknode.kind = StkNodeKind.address;
             this.stk.push(stknode);
             return;
-        } else if (derefNode.loc.type === "array") {
-            const loc = derefNode.loc;
-            const hstore = this.heap.ram.get(derefNode.loc.hstoreAddr);
+        } else if (derefNode.data.type === "array") {
+            const loc = derefNode.data;
+            const hstore = this.heap.ram.get(derefNode.data.hstoreAddr);
             const offsetVslotAddr = hstore.data.get(offsetName);
             if (offsetVslotAddr === undefined) {
-                // $a exists but $a[x] does not, since it is a write operation, we need create a new offset in this array
-                const newVslotAddr = this.heap.ptr++;
-                const newVstoreAddr = this.heap.ptr++;
-                const newVslot = {
-                    modifiers: [false, false, false, false, false, false, false, false],
-                    name: offsetName,
-                    vstoreAddr: newVstoreAddr,
-                };
-                const newVstore = {
-                    hstoreAddr: undefined,
-                    refcount: 1,
-                    type: null,
-                    val: null,
-                };
-                this.heap.ram.set(newVslotAddr, newVslot);
-                this.heap.ram.set(newVstoreAddr, newVstore);
-                hstore.data.set(offsetName, newVslotAddr);
+                // $a exists but $a[x] does not, since it is a write operation, we need create a new offset element in this array
+                const newOffsetVslotAddr = createVariable(this.heap, offsetName, null);
+                hstore.data.set(offsetName, newOffsetVslotAddr);
             }
-            const vslot = this.heap.ram.get(offsetVslotAddr);
+            const vslot = this.heap.ram.get(hstore.data.get(offsetName));
             const vstore = this.heap.ram.get(vslot.vstoreAddr);
             loc.type = vstore.type;
             loc.vslotAddr = offsetVslotAddr;
             loc.vstoreAddr = vslot.vstoreAddr;
-            loc.hstoreAddr = this.heap.ram.get(vstore.hstoreAddr);
+            loc.hstoreAddr = vstore.hstoreAddr;
+            stknode.data = loc;
+            stknode.kind = StkNodeKind.address;
             this.stk.push(stknode);
             return;
-        } else if (derefNode.loc.type === "object") {
+        } else if (derefNode.data.type === "object") {
             // TODO: any objects belonging to a class which implements `ArrayAccess`
-        } else if (derefNode.loc.type === "null") {
-            if (derefNode.loc.hstoreAddr !== undefined) {
-                // $a = null; $a already exists in memory, but $a is not an array
-                this.env.get(derefNode.loc.idx).st._var.get
+        } else if (derefNode.data.type === "null") {
+            // $a = null; $a[6] = 1;
+            // $a already exists in memory, but $a is not an array
+            let hstore = null;
+            if (derefNode.data.hstoreAddr !== undefined) {
+                // this variable might have hstore address, but I think null variable should not have hstore
+                const derefVstore = this.heap.ram.get(derefNode.data.vstoreAddr);
+                const derefHstore = this.heap.ram.get(derefNode.data.hstoreAddr);
+                derefVstore.type = "array";
+                derefVstore.val = null;
+                derefHstore.type = "array";
+                derefHstore.meta = 0;
+                derefHstore.data = new Map();
+                hstore = derefHstore;
             } else {
                 // need to create a new array
-                const newVslotAddr = this.heap.ptr++;
-                const newVstoreAddr = this.heap.ptr++;
-                const newHstoreAddr = this.heap.ptr++;
-                const newVslot = {
-                    modifiers: [false, false, false, false, false, false, false, false],
-                    name: offsetNode.node.what.name,
-                    vstoreAddr: newVstoreAddr,
-                };
-                const newVstore = {
-                    hstoreAddr: newHstoreAddr,
-                    refcount: 1,
-                    type: "array",
-                    val: null,
-                };
-                this.env.get(this.cur).st._var.set(offsetNode.node.what.name, newVslotAddr);
-                const newHstore = {
-                    data: new Map(),
-                    meta: 0,
-                    refcount: 1,
-                    type: "array",
-                };
-                this.heap.ram.set(newVslotAddr, newVslot);
-                this.heap.ram.set(newVstoreAddr, newVstore);
-                this.heap.ram.set(newHstoreAddr, newHstore);
+                const newVslotAddr = createVariable(this.heap, offsetNode.node.what.name, "array");
+                this.env[this.cur].st._var.set(offsetNode.node.what.name, newVslotAddr);
+                const newVstoreAddr = this.heap.ram.get(newVslotAddr).vstoreAddr;
+                hstore = this.heap.ram.get(this.heap.ram.get(newVstoreAddr).hstoreAddr);
+                hstore.meta = 0;
             }
+            // create offset element
+            const newOffsetVslotAddr = createVariable(this.heap, offsetName, null);
+            hstore.data.set(offsetName, newOffsetVslotAddr);
+            const vslot = this.heap.ram.get(hstore.data.get(offsetName));
+            const vstore = this.heap.ram.get(vslot.vstoreAddr);
+            const loc = derefNode.data;
+            loc.type = vstore.type;
+            loc.vslotAddr = newOffsetVslotAddr;
+            loc.vstoreAddr = vslot.vstoreAddr;
+            loc.hstoreAddr = vstore.hstoreAddr;
+            stknode.data = loc;
+            stknode.kind = StkNodeKind.address;
+            this.stk.push(stknode);
+            return;
         } else {
             throw new Error("Eval error: undefined type dereferencable-expression in writing offset");
         }

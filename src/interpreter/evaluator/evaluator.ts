@@ -351,6 +351,7 @@ export enum StkNodeKind {
     address,
     indicator,
 }
+
 /**
  * @description
  * Node in the execution stack. It could be a AST node, an instruction, an operator and a value
@@ -359,7 +360,7 @@ export enum StkNodeKind {
  * @param {any}          data - any data correspond to its kind
  * @param {string}       inst - any instruction guiding the evaluation actions
  * @example
- * { kind: "ast", data: "{...}", inst: "getAddress" }
+ * { kind: "ast", data: {...}, inst: "getAddress" }
  * { kind: "value", data: false, inst: null }
  * { kind: "address", data: 15073, inst: null }
  * { kind: "indicator", data: null, inst: "endAssign" }

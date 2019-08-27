@@ -24,7 +24,7 @@ import { IMethod, IParameter } from "../memory";
  *      static-modifier
  *      class-modifier
  */
-Evaluator.prototype.evaluateFunction = function () {
+Evaluator.prototype.evaluateFunction = function() {
     const methodNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "method");
 
     // evaluate functions to IFunction abstract model, a temporary object

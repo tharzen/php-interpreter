@@ -218,7 +218,7 @@ export interface IClass {
 /**
  * @description
  * Memory location model, find variables in specific environment
- * @param {string} type - number, boolean, string, object, array, null
+ * @param {string} type - type of the variable which belongs to this location in heap
  * @param {number} idx - environment index
  * @param {number} vslotAddr - vslot address
  * @param {number} vstoreAddr - vstore address
@@ -246,7 +246,6 @@ import { IHeap } from "./evaluator";
  * @param {IHeap} heap
  * @param {string} varname - variable name
  * @param {string} type - variable type
- * @param {any} val - variable value
  */
 export function createVariable(heap: IHeap, varname: number | string, type?: string): number {
     const newVslotAddr = heap.ptr++;
@@ -266,7 +265,7 @@ export function createVariable(heap: IHeap, varname: number | string, type?: str
         // non-scalar type, need hstore
         const newHstoreAddr = heap.ptr++;
         const newHstore: IHStore = {
-            data: null,
+            data: new Map(),
             meta: null,
             refcount: 1,
             type,
