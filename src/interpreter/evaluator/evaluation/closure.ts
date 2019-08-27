@@ -2,7 +2,7 @@
  * @authors
  * https://github.com/tharzen/php-interpreter
  * @description
- * The file for anonymous functions, also known as closures, allow the creation of functions which have no specified name
+ * The file for anonymous functions, also known as closures, evaluation
  * @see
  * https://www.php.net/manual/en/functions.anonymous.php
  * https://github.com/php/php-langspec/blob/master/spec/13-functions.md#anonymous-functions
@@ -31,10 +31,10 @@ import { IClosure, IParameter } from "../memory";
  * };
  * $a(3); // will return Fatal error:  Cannot use lexical variable $f as a parameter name because they are duplicate
  */
-Evaluator.prototype.evaluateFunction = function () {
+Evaluator.prototype.evaluateClosure = function() {
     const closureNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "closure");
 
-    // evaluate functions to IClosure abstract model, a temporary object
+    // evaluate closures to IClosure abstract model, a temporary object
     const closureObj: IClosure = {
         _static: false,
         args: [],
