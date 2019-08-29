@@ -28,7 +28,7 @@ export const evaluateOffset = function(this: Evaluator) {
 
     // `$a = $b[];`, `$b[$a[]] = 1;` is illegal
     if ((offsetNode.inst === undefined || offsetNode.inst !== "getAddress")
-        && !offsetNode.node.offset) {
+        && !offsetNode.data.offset) {
         throw new Error("Fatal error:  Cannot use [] for reading.");
     }
 
@@ -44,7 +44,7 @@ export const evaluateOffset = function(this: Evaluator) {
          * READ
          * if `$a[1][2]` doesnt exist, it will print notice: Undefined variable: a and then return null, it won't create any new array
          */
-        if (offsetNode.node.offset) {
+        if (offsetNode.data.offset) {
             // could be false, e.g. $a[] = 1;
             this.stk.push({
                 data: offsetNode.data.offset,
@@ -53,7 +53,7 @@ export const evaluateOffset = function(this: Evaluator) {
             });   // read offset value, e.g. $a, $a[1],
         }
         this.stk.push({
-            data: offsetNode.node.what,
+            data: offsetNode.data.what,
             inst: "getValue",
             kind: StkNodeKind.ast,
         });
@@ -63,7 +63,7 @@ export const evaluateOffset = function(this: Evaluator) {
         const derefNode = stkPop(this.stk, StkNodeKind.value);
         if (derefNode.data === undefined) {
             // cannot find this array or string, need to throw a warning
-            this.log += ("Notice: Undefined variable " + offsetNode.node.what.name + "\n");
+            this.log += ("Notice: Undefined variable " + offsetNode.data.what.name + "\n");
             stknode.data = null;
             this.stk.push(stknode);
             return;
@@ -90,7 +90,7 @@ export const evaluateOffset = function(this: Evaluator) {
                     }
                     case "string": {
                         // check if it could be converted to number
-                        const validDecInt = /^(|[-]?0|-[1-9][0-9]*)$/;    // 010 × | 10.0 × | -10 √ | -0 √
+                        const validDecInt = /^(|(-)?[1-9][0-9]*)$/;    // 010 × | 10.0 × | -10 √ | -0 √
                         if (validDecInt.test(offsetName)) {
                             offsetName = Number(offsetName);
                         }
@@ -114,7 +114,8 @@ export const evaluateOffset = function(this: Evaluator) {
                 return;
             } else if (typeof derefNode.data === "string") {    // string
                 // The subscript operator can not be used on a string value in a byRef context
-                if (offsetNode.node.what.byref) {
+                // $b = "eee"; $v = &$b[3];
+                if (offsetNode.data.what.byref) {
                     throw new Error("Fatal error:  Uncaught Error: Cannot create references to/from string offsets.");
                 }
                 // If both dereferencable-expression and expression designate strings,
@@ -154,16 +155,16 @@ export const evaluateOffset = function(this: Evaluator) {
          * WRITE
          * if `$a[][1][0]` doesnt exist, it will create a new array then assgin null to it, the empty offset will be 0
          */
-        if (offsetNode.node.offset) {
+        if (offsetNode.data.offset) {
             // could be false, e.g. $a[] = 1;
             this.stk.push({
-                data: offsetNode.node.offset,
+                data: offsetNode.data.offset,
                 inst: "getValue",
                 kind: StkNodeKind.ast,
             });   // read offset value, e.g. $a, $a[1],
         }
         this.stk.push({
-            data: offsetNode.node.what,
+            data: offsetNode.data.what,
             inst: "getAddress",
             kind: StkNodeKind.ast,
         });   // get the array or string or object's location
@@ -173,8 +174,8 @@ export const evaluateOffset = function(this: Evaluator) {
         const derefNode = stkPop(this.stk, StkNodeKind.address);
         // should be "variable" node, if it is a temporary value on the left of the assignment, it will throw fatal error before pushed into stack
 
-        let offsetName = null;
-        if (offsetNode.node.offset) {
+        let offsetName;
+        if (offsetNode.data.offset) {
             // evaluate 'offset' which is a key in the deref, and it should be integer or string
             this.evaluate();
             const keyNode = stkPop(this.stk, StkNodeKind.value);
@@ -200,7 +201,7 @@ export const evaluateOffset = function(this: Evaluator) {
                     }
                     case "string": {
                         // check if it could be converted to number
-                        const validDecInt = /^(|[-]?0|-[1-9][0-9]*)$/;    // 010 × | 10.0 × | -10 √ | -0 √
+                        const validDecInt = /^(|(-)?[1-9][0-9]*)$/;    // 010 × | 10.0 × | -10 √ | -0 √
                         if (validDecInt.test(offsetName)) {
                             offsetName = Number(offsetName);
                         }
@@ -216,31 +217,33 @@ export const evaluateOffset = function(this: Evaluator) {
                 }
             } else {
                 // $a[$c] = 1;
-                this.log += ("Notice: Undefined variable " + offsetNode.node.offset.name + "\n");
+                this.log += ("Notice: Undefined variable " + offsetNode.data.offset.name + "\n");
                 offsetName = "";
             }
-        } else {
-            offsetName = 0;
         }
 
         // Now there is deref location and offset name, we can get memory location
-        if (typeof derefNode.data.type === "boolean" || typeof derefNode.data.type === "number") {
+        if (derefNode.data.type === "boolean" || derefNode.data.type === "number") {
             this.log += ("Warning:  Cannot use a scalar value as an array" + "\n");
             stknode.data = undefined;
             this.stk.push(stknode);
             return;
-        } else if (typeof derefNode.data.type === "string") {
-            // The subscript operator can not be used on a string value in a byRef context
-            if (offsetNode.node.what.byref) {
-                throw new Error("Fatal error:  Uncaught Error: Cannot create references to/from string offsets.");
+        } else if (derefNode.data.type === "string") {
+            // $a = "123"; $a[] = 3;
+            if (offsetName === undefined) {
+                throw new Error("Fatal error: Uncaught Error: [] operator not supported for strings");
+            }
+            // $b = "eee"; &$b[3] = "d"; should throw parse error
+            if (offsetNode.data.what.byref) {
+                throw new Error("Parse error: syntax error, unexpected '&', expecting end of file");
+            }
+            if (typeof this.heap.ram.get(derefNode.data.vstoreAddr).val !== "string") {
+                throw new Error("Eval Error: wrong type in writing string offset");
             }
             // If both dereferencable-expression and expression designate strings,
             // expression is treated as if it specified the int key zero instead and a non-fatal error is produces.
             if (typeof offsetName === "string") {
                 offsetName = 0;
-            }
-            if (typeof this.heap.ram.get(derefNode.data.vstoreAddr).val !== "string") {
-                throw new Error("Eval Error: wrong type in writing string offset");
             }
 
             const str: string = this.heap.ram.get(derefNode.data.vstoreAddr).val;
@@ -262,11 +265,16 @@ export const evaluateOffset = function(this: Evaluator) {
         } else if (derefNode.data.type === "array") {
             const loc = derefNode.data;
             const hstore = this.heap.ram.get(derefNode.data.hstoreAddr);
-            const offsetVslotAddr = hstore.data.get(offsetName);
+            if (offsetName === undefined) {
+                offsetName = hstore.meta;
+                hstore.meta += 1;
+            }
+            let offsetVslotAddr = hstore.data.get(offsetName);
             if (offsetVslotAddr === undefined) {
                 // $a exists but $a[x] does not, since it is a write operation, we need create a new offset element in this array
                 const newOffsetVslotAddr = createVariable(this.heap, offsetName, null);
                 hstore.data.set(offsetName, newOffsetVslotAddr);
+                offsetVslotAddr = newOffsetVslotAddr;
             }
             const vslot = this.heap.ram.get(hstore.data.get(offsetName));
             const vstore = this.heap.ram.get(vslot.vstoreAddr);
@@ -296,8 +304,9 @@ export const evaluateOffset = function(this: Evaluator) {
                 hstore = derefHstore;
             } else {
                 // need to create a new array
-                const newVslotAddr = createVariable(this.heap, offsetNode.node.what.name, "array");
-                this.env[this.cur].st._var.set(offsetNode.node.what.name, newVslotAddr);
+                const newVslotAddr = createVariable(this.heap, offsetNode.data.what.name, "array");
+                this.heap.ram.get(newVslotAddr).modifiers[0] = this.cur === 0 ? true : false;   // global?
+                this.env[this.cur].st._var.set(offsetNode.data.what.name, newVslotAddr);
                 const newVstoreAddr = this.heap.ram.get(newVslotAddr).vstoreAddr;
                 hstore = this.heap.ram.get(this.heap.ram.get(newVstoreAddr).hstoreAddr);
                 hstore.meta = 0;

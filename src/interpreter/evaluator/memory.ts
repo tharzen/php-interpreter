@@ -223,7 +223,7 @@ export interface IClass {
  * @property {number} vslotAddr - vslot address
  * @property {number} vstoreAddr - vstore address
  * @property {number} hstoreAddr - hstore address
- * @property {number} offset - for string offset
+ * @property {number} offset - for string offset, because chars in string cannot be located in heap
  */
 export interface ILocation {
     type: string;

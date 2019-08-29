@@ -38,13 +38,15 @@ export const evaluateArray = function(this: Evaluator) {
         type: "array",
     };
 
+    let i = 0;
     traverseArrayLoop:
-    for (let i = 0, item: ASTNode = arrayNode.data.items[i]; i < arrayNode.data.items.length; i++) {
+    for (; i < arrayNode.data.items.length; i++) {
         /**
          * For multi-line arrays on the other hand the trailing comma is commonly used,
          * as it allows easier addition of new elements at the end. In this way AST node could be null.
          * But not allow empty elements in array, such as [,,,].
          */
+        const item: ASTNode = arrayNode.data.items[i];
         if ((item === null && i === 0) || (item === null && i !== arrayNode.data.items.length - 1)) {
             throw new Error("Fatal error: Cannot use empty array elements in arrays.");
         }
@@ -77,7 +79,7 @@ export const evaluateArray = function(this: Evaluator) {
                 }
                 case "string": {
                     // check if it could be converted to number
-                    const validDecInt = /^(|[-]?0|-[1-9][0-9]*)$/;    // "010" × | "10.0" × | "-10" √ | "-0" √ | "+0" ×
+                    const validDecInt = /^(|(-)?[1-9][0-9]*)$/;    // "010" × | "10.0" × | "-10" √ | "-0" √ | "+0" ×
                     if (validDecInt.test(key)) {
                         key = Number(key);
                         arrayObj.idx = key >= arrayObj.idx ? key + 1 : arrayObj.idx;
@@ -93,6 +95,8 @@ export const evaluateArray = function(this: Evaluator) {
                 case "object": {
                     if (key === null) {
                         key = "";
+                    } else if (key.type === "IArray") {
+                        throw new Error("Fatal error:  Illegal offset type");
                     } else {
                         this.log += ("Warning:  Illegal offset type.\n");
                         continue traverseArrayLoop;     // do nothing with this array element

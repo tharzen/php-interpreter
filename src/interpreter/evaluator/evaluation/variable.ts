@@ -60,6 +60,7 @@ export const evaluateVariable = function(this: Evaluator) {
             // create a new variable without any types
             const env = this.env[this.cur];
             const newVslotAddr = createVariable(this.heap, varname);
+            this.heap.ram.get(newVslotAddr).modifiers[0] = this.cur === 0 ? true : false;   // global?
             env.st._var.set(varNode.data.name, newVslotAddr);
             vslotAddr = newVslotAddr;
             vstoreAddr = this.heap.ram.get(newVslotAddr).vstoreAddr;

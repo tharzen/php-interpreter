@@ -371,6 +371,14 @@ Evaluator.prototype.evaluate = function() {
         };
         this.stk.push(stknode);
         this.evaluateGlobal();
+    } else if (expr.kind === "offsetlookup") {
+        const stknode: IStkNode = {
+            data: expr,
+            inst,
+            kind: StkNodeKind.ast,
+        };
+        this.stk.push(stknode);
+        this.evaluateOffset();
     } else if (expr.kind === "echo") {
         const stknode: IStkNode = {
             data: expr,

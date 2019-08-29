@@ -104,7 +104,59 @@ export const evaluateAssign = function(this: Evaluator) {
             // assignment
             // $a = $b; $b is undefined and $a is set to null
             rightResult.data = rightResult.data === undefined ? null : rightResult.data;
-            setValue(this.heap, leftResult.data.vslotAddr, rightResult.data);
+            if (leftResult.data.offset) {
+                let rightChar = "";
+                // this is a location of a character in one string
+                switch (typeof rightResult.data) {
+                    case "boolean": {
+                        if (rightResult.data === true) {
+                            rightChar = "1";
+                        } else {
+                            // $b = $a[3] = false; $b will be null!!!
+                            rightResult.data = null;    // for next evaluation
+                        }
+                        break;
+                    }
+                    case "string": {
+                        if (rightResult.data === "") {
+                            this.log += ("Warning:  Cannot assign an empty string to a string offset\n");
+                        }
+                        rightChar = rightResult.data[0];
+                        // $b = $a[3] = ""; $b will be null!!!
+                        rightResult.data = null;    // for next evaluation
+                        break;
+                    }
+                    case "number": {
+                        rightChar = rightResult.data.toString()[0];
+                        break;
+                    }
+                    case "object": {
+                        if (rightResult.data === null) {
+                            this.log += ("Warning:  Cannot assign an empty string to a string offset\n");
+                        } else if (rightResult.data.type === "array") {
+                            this.log += ("Notice: Array to string conversion\n");
+                            rightChar = "A";   // first character of "Array"
+                        } else if (rightResult.data.type === "object") {
+                            throw new Error("Recoverable fatal error:  Object of class aa could not be converted to string\n");
+                        } else {
+                            throw new Error("Eval error: unidentified value when assigning a string\n");
+                        }
+                        break;
+                    }
+                    default: {
+                        throw new Error("Eval error: unidentified value when assigning a string\n");
+                    }
+                }
+                // assign
+                const vslot = this.heap.ram.get(leftResult.data.vslotAddr);
+                const vstore = this.heap.ram.get(vslot.vstoreAddr);
+                while (leftResult.data.offset > vstore.val.length) {
+                    vstore.val += " ";
+                }
+                vstore.val += rightChar;
+            } else {
+                setValue(this.heap, leftResult.data.vslotAddr, rightResult.data);
+            }
         } else if (this.stk.top.value.kind === StkNodeKind.address) {
             // byref assignment
             rightResult = stkPop(this.stk, StkNodeKind.address);       // address
