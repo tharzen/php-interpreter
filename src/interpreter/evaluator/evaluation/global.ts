@@ -9,7 +9,7 @@
  */
 
 import { Node as ASTNode } from "../../php-parser/src/ast/node";
-import { evalStkPop, Evaluator, StkNodeKind } from "../evaluator";
+import { Evaluator, StkNodeKind, stkPop } from "../evaluator";
 import { IVSlot, IVStore } from "../memory";
 
 /**
@@ -25,8 +25,8 @@ import { IVSlot, IVStore } from "../memory";
  * One of the predefined variables, $GLOBALS is a superglobal array whose elements' key/value pairs contain the name and value,
  * respectively, of each global variable currently defined.
  */
-Evaluator.prototype.evaluateGlobal = function() {
-    const globalNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "global");
+export const evaluateGlobal = function(this: Evaluator) {
+    const globalNode: ASTNode = stkPop(this.stk, StkNodeKind.ast, "global");
 
     const varEnv = this.env[this.cur];
     const globalEnv = this.env[0];

@@ -9,7 +9,7 @@
  */
 
 import { Node as ASTNode } from "../../php-parser/src/ast/node";
-import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
+import { Evaluator, IStkNode, StkNodeKind, stkPop } from "../evaluator";
 import { createVariable } from "../memory";
 
 /**
@@ -23,8 +23,8 @@ import { createVariable } from "../memory";
  *      string-literal
  * A subscript-expression designates a (possibly non-existent) element of an array or string or object of a type that implements `ArrayAccess`.
  */
-Evaluator.prototype.evaluateOffset = function() {
-    const offsetNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "offsetlookup");
+export const evaluateOffset = function(this: Evaluator) {
+    const offsetNode: ASTNode = stkPop(this.stk, StkNodeKind.ast, "offsetlookup");
 
     // `$a = $b[];`, `$b[$a[]] = 1;` is illegal
     if ((offsetNode.inst === undefined || offsetNode.inst !== "getAddress")
@@ -60,10 +60,10 @@ Evaluator.prototype.evaluateOffset = function() {
 
         // evaluate 'what' which is the deref name, a "variable" or "array" or "string" AST node
         this.evaluate();
-        const derefNode = this.stk.top.value; this.stk.pop();
+        const derefNode = stkPop(this.stk, StkNodeKind.value);
         if (derefNode.data === undefined) {
             // cannot find this array or string, need to throw a warning
-            console.error("Notice: Undefined variable " + offsetNode.node.what.name);
+            this.log += ("Notice: Undefined variable " + offsetNode.node.what.name + "\n");
             stknode.data = null;
             this.stk.push(stknode);
             return;
@@ -76,11 +76,11 @@ Evaluator.prototype.evaluateOffset = function() {
             // array or string exists
             // evaluate 'offset' which is a key in the deref, and it should be integer or string
             this.evaluate();
-            const keyNode: ASTNode = this.stk.top.value; this.stk.pop();
+            const keyNode = stkPop(this.stk, StkNodeKind.value);
             let offsetName = keyNode.data;
             if (offsetName !== undefined) {
                 if (typeof offsetName !== "number" && typeof offsetName !== "boolean" && typeof offsetName !== "string") {
-                    console.error("Warning: Illegal offset type " + offsetName);    // only warning but not terminate program
+                    this.log += ("Warning: Illegal offset type " + offsetName + "\n");    // only warning but not terminate program
                     offsetName = "";  // treat offset as null which is [] => 1
                 }
                 switch (typeof offsetName) {
@@ -128,7 +128,7 @@ Evaluator.prototype.evaluateOffset = function() {
                     offsetName += str.length;
                 }
                 if (str[offsetName] === undefined) {
-                    console.error("Notice: Uninitialized string offset " + offsetName);
+                    this.log += ("Notice: Uninitialized string offset " + offsetName + "\n");
                 }
                 stknode.data = str[offsetName];  // if it still out of bound, there will be a undefined
                 this.stk.push(stknode);
@@ -136,7 +136,7 @@ Evaluator.prototype.evaluateOffset = function() {
             } else if (typeof derefNode.data === "object" && derefNode.data.type === "IArray") {    // array
                 const array = derefNode.data.elt;
                 if (array.size === 0 || array.get(offsetName) === undefined) {
-                    console.error("Notice: Undefined offset: " + offsetName);
+                    this.log += ("Notice: Undefined offset: " + offsetName + "\n");
                     stknode.data = null;
                 } else {
                     stknode.data = array.get(offsetName);
@@ -170,22 +170,22 @@ Evaluator.prototype.evaluateOffset = function() {
 
         // evaluate 'what' which is the deref name, a "variable" or "array" or "string" AST node
         this.evaluate();
-        const derefNode = this.stk.top.value; this.stk.pop();
+        const derefNode = stkPop(this.stk, StkNodeKind.address);
         // should be "variable" node, if it is a temporary value on the left of the assignment, it will throw fatal error before pushed into stack
 
         let offsetName = null;
         if (offsetNode.node.offset) {
             // evaluate 'offset' which is a key in the deref, and it should be integer or string
             this.evaluate();
-            const keyNode: ASTNode = this.stk.top.value; this.stk.pop();
-            offsetName = keyNode.val;
+            const keyNode = stkPop(this.stk, StkNodeKind.value);
+            offsetName = keyNode.data;
             if (offsetName !== undefined) {
                 if (typeof offsetName !== "number" && typeof offsetName !== "boolean" && typeof offsetName !== "string") {
                     if (offsetName === null) {
                         offsetName = "";  // treats null as "" which is [""] => xxx
                     } else {
                         // illegal location, cannot get legal memory location, the evaluator should stop evaluating this part
-                        console.error("Warning: Illegal offset type " + offsetName);    // only warning and do nothing, not terminate program
+                        this.log += ("Warning: Illegal offset type " + offsetName + "\n");    // only warning and do nothing, not terminate program
                         stknode.data = undefined;
                         stknode.kind = StkNodeKind.address;
                         // stknode.inst = ""; // instruction unsure ???
@@ -216,7 +216,7 @@ Evaluator.prototype.evaluateOffset = function() {
                 }
             } else {
                 // $a[$c] = 1;
-                console.error("Notice: Undefined variable " + offsetNode.node.offset.name);
+                this.log += ("Notice: Undefined variable " + offsetNode.node.offset.name + "\n");
                 offsetName = "";
             }
         } else {
@@ -225,7 +225,7 @@ Evaluator.prototype.evaluateOffset = function() {
 
         // Now there is deref location and offset name, we can get memory location
         if (typeof derefNode.data.type === "boolean" || typeof derefNode.data.type === "number") {
-            console.error("Warning:  Cannot use a scalar value as an array");
+            this.log += ("Warning:  Cannot use a scalar value as an array" + "\n");
             stknode.data = undefined;
             this.stk.push(stknode);
             return;
@@ -249,7 +249,7 @@ Evaluator.prototype.evaluateOffset = function() {
                 offsetName += str.length;
                 // $a = "abc"; $a[-10] = "d";
                 if (offsetName < 0) {
-                    console.error("Warning: Illegal string offset " + offsetName);
+                    this.log += ("Warning: Illegal string offset " + offsetName + "\n");
                 }
             }
 

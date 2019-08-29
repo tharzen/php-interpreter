@@ -15,27 +15,43 @@
  * (SICP) Each environment frame is a table (possibly empty) of bindings, which associate variable names with their corresponding values.
  * (SICP) Each environment frame also has a pointer to its enclosing environment.
  * Without any namespace definition, all classes and functions definition are placed into the global space
+ * @property {string} name - environment name
+ * @property {ISymbolTable} st - symbol table
  */
 export class Env {
-    public name: string;            // environment name
-    public type: string;            // environment type
-    public out: number;             // outer environment
-    public sub: number[];           // sub environment, evaluator.env.get(...)
-    public st: ISymbolTable;        // symbol table
+    public name: string;
+    public st: ISymbolTable;
+    constructor(name: string) {
+        this.name = name;
+        this.st = {
+            _class: new Map(),
+            _function: new Map(),
+            _interface: new Map(),
+            _namespace: new Map(),
+            _trait: new Map(),
+            _var: new Map(),
+        };
+    }
 }
 
 /**
  * @description
  * A symbol table is an abstract data type (ADT) for tracking various symbols in source code.
  * These symbols' addresses are stored in Heap of evaluator.
+ * @property {Map} _var -       variable name => vslot address
+ * @property {Map} _class -     class name => address
+ * @property {Map} _function -  function name => address
+ * @property {Map} _trait -     trait name => address
+ * @property {Map} _interface - interface name => address
+ * @property {Map} _namespace - namespace name => address
  */
 export interface ISymbolTable {
-    _var: Map<string, number>;          // variable name => vslot address
-    _class: Map<string, number>;        // class name => address
-    _function: Map<string, number>;     // function name => address
-    _trait: Map<string, number>;        // trait name => address
-    _interface: Map<string, number>;    // interface name => address
-    _namespace: Map<string, number>;    // namespace name => address
+    _var: Map<string, number>;
+    _class: Map<string, number>;
+    _function: Map<string, number>;
+    _trait: Map<string, number>;
+    _interface: Map<string, number>;
+    _namespace: Map<string, number>;
 }
 
 /**

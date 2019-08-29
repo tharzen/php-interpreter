@@ -10,7 +10,7 @@
  */
 
 import { Node as ASTNode } from "../../php-parser/src/ast/node";
-import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
+import { Evaluator, IStkNode, StkNodeKind, stkPop } from "../evaluator";
 import { IFunction, IParameter } from "../memory";
 
 /**
@@ -30,8 +30,8 @@ import { IFunction, IParameter } from "../memory";
  * function-definition-header:
  * function   &_opt   name   (   parameter-declaration-list_opt   )   return-type_opt
  */
-Evaluator.prototype.evaluateFunction = function() {
-    const functionNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "function");
+export const evaluateFunction = function(this: Evaluator) {
+    const functionNode: ASTNode = stkPop(this.stk, StkNodeKind.ast, "function");
 
     // evaluate functions to IFunction abstract model, a temporary object
     const functionObj: IFunction = {

@@ -4,10 +4,21 @@
  * @description
  * The main entry of evaluator.
  */
-
+import util = require("util");
 import { Node as ASTNode } from "../php-parser/src/ast/node";
 import { AST } from "../php-parser/src/index";
 import { Env } from "./environment";
+import { evaluateArray } from "./evaluation/array";
+import { evaluateAssign } from "./evaluation/assign";
+import { evaluateBinary } from "./evaluation/bin";
+import { evaluateClass } from "./evaluation/class";
+import { evaluateClosure } from "./evaluation/closure";
+import { evaluateFunction } from "./evaluation/function";
+import { evaluateGlobal } from "./evaluation/global";
+import { evaluateEcho } from "./evaluation/internal/echo";
+import { evaluateMethod } from "./evaluation/method";
+import { evaluateOffset } from "./evaluation/offset";
+import { evaluateVariable } from "./evaluation/variable";
 import { Stack } from "./utils/stack";
 
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
@@ -15,16 +26,20 @@ import { Stack } from "./utils/stack";
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
 
 /**
- * @param {AST}     ast - abstract syntax tree
- * @param {Map}     env - two environments which technically are scopes, global and local
- * @param {number}  cur - current environment index, 0 for global, 1 for local
- * @param {Stack}   stk - stack keeping a log of the functions which are called during the execution
- * @param {IHeap}   heap - storage, such as variable bindings, function declaration, class declaration, namespace location and etc.
+ * @property {AST}     ast - abstract syntax tree
+ * @property {Map}     env - two environments which technically are scopes, global and local
+ * @property {number}  cur - current environment index, 0 for global, 1 for local
+ * @property {string}  res - final evaluation result, currently we assume it should always be string
+ * @property {string}  log - logging notice, warning, any unfatal errors
+ * @property {Stack}   stk - stack keeping a log of the functions which are called during the execution
+ * @property {IHeap}   heap - storage, such as variable bindings, function declaration, class declaration, namespace location and etc.
  */
 export class Evaluator {
     public ast: AST;
     public env: Env[];
     public cur: number;
+    public res: string;
+    public log: string;
     public stk: Stack<IStkNode>;
     public heap: IHeap;
 
@@ -32,7 +47,7 @@ export class Evaluator {
      * @description
      * The main entry for running the evaluator
      */
-    public run: () => void;
+    public run: () => string;
 
     /**
      * @description
@@ -52,7 +67,7 @@ export class Evaluator {
      * And there are "combined operators" for all of the binary arithmetic, array union and string operators
      * @file evaluator/evaluation/assign.ts
      */
-    public evaluateAssign: () => void;
+    public evaluateAssign = evaluateAssign;
 
     /**
      * @description
@@ -60,7 +75,15 @@ export class Evaluator {
      * @file
      * evaluator/evaluation/array.ts
      */
-    public evaluateArray: () => void;
+    public evaluateArray = evaluateArray;
+
+    /**
+     * @description
+     * Evaluate class declaration
+     * @file
+     * evaluator/evaluation/class.ts
+     */
+    public evaluateClass = evaluateClass;
 
     /**
      * @description
@@ -68,7 +91,7 @@ export class Evaluator {
      * @file
      * evaluator/evaluation/closure.ts
      */
-    public evaluateClosure: () => void;
+    public evaluateClosure = evaluateClosure;
 
     /**
      * @description
@@ -76,7 +99,7 @@ export class Evaluator {
      * @file
      * evaluator/evaluation/function.ts
      */
-    public evaluateFunction: () => void;
+    public evaluateFunction = evaluateFunction;
 
     /**
      * @description
@@ -84,7 +107,15 @@ export class Evaluator {
      * @file
      * evaluator/evaluation/global.ts
      */
-    public evaluateGlobal: () => void;
+    public evaluateGlobal = evaluateGlobal;
+
+    /**
+     * @description
+     * Evaluate the function method
+     * @file
+     * evaluator/evaluation/method.ts
+     */
+    public evaluateMethod = evaluateMethod;
 
     /**
      * @description
@@ -92,7 +123,7 @@ export class Evaluator {
      * @file
      * evaluator/evaluation/offset.ts
      */
-    public evaluateOffset: () => void;
+    public evaluateOffset = evaluateOffset;
 
     /**
      * @description
@@ -100,7 +131,7 @@ export class Evaluator {
      * @file
      * evaluator/evaluation/variable.ts
      */
-    public evaluateVariable: () => void;
+    public evaluateVariable = evaluateVariable;
 
     /**
      * @description
@@ -108,12 +139,22 @@ export class Evaluator {
      * @file
      * evaluator/evaluation/bin.ts
      */
-    public evaluateBinary: () => void;
+    public evaluateBinary = evaluateBinary;
+
+    /**
+     * @description
+     * Evaluate the echo function
+     * @file
+     * evaluator/evaluation/internal/echo.ts
+     */
+    public evaluateEcho = evaluateEcho;
 
     constructor(ast: AST) {
         this.ast = ast;
-        this.env = Env[2];
+        this.env = [new Env("global"), new Env("local")];
         this.cur = 0;
+        this.res = "";
+        this.log = "";
         this.stk = new Stack<IStkNode>();
         this.heap = {
             ptr: 0,
@@ -128,14 +169,22 @@ Evaluator.prototype.run = function() {
     // classes without extends / implements / use, and all traits, all interfaces
     const reorderAST = this.lift();
     for (const astNode of reorderAST) {
-        this.stk.push(astNode);
+        const stknode: IStkNode = {
+            data: astNode,
+            inst: null,
+            kind: StkNodeKind.ast,
+        };
+        this.stk.push(stknode);
     }
     while (this.stk.length() > 0) {
         this.evaluate();
     }
+    console.log(util.inspect(this, { depth: null }));
+    return this.res;
 };
 
 Evaluator.prototype.lift = function(): ASTNode[] {
+    // use unshift but not push because last element push into stack should be evaluated first
     const reorderAST: ASTNode[] = [];
     this.ast.children.forEach((child: ASTNode) => {
         switch (child.kind) {
@@ -154,7 +203,7 @@ Evaluator.prototype.lift = function(): ASTNode[] {
             }
             case "class": {
                 if (child.extends !== null || child.implements !== null) {
-                    reorderAST.push(child);     // not normal class, do nothing
+                    reorderAST.unshift(child);     // not normal class, do nothing
                 } else {
                     let useTrait = false;
                     for (const classElt of child.body) {
@@ -164,7 +213,7 @@ Evaluator.prototype.lift = function(): ASTNode[] {
                         }
                     }
                     if (useTrait) {
-                        reorderAST.push(child);     // not normal class, do nothing
+                        reorderAST.unshift(child);     // not normal class, do nothing
                     } else {
                         // lift
                         const stknode: IStkNode = {
@@ -181,7 +230,7 @@ Evaluator.prototype.lift = function(): ASTNode[] {
                 break;
             }
             default: {
-                reorderAST.push(child);     // do nothing
+                reorderAST.unshift(child);     // do nothing
                 break;
             }
         }
@@ -191,12 +240,9 @@ Evaluator.prototype.lift = function(): ASTNode[] {
 
 Evaluator.prototype.evaluate = function() {
     // each time evaluate top element of stack
-    const topNode = this.stk.top.value; this.stk.pop();
-    if (topNode.kind !== StkNodeKind.ast) {
-        throw new Error("Eval Error: Evaluate wrong node: " + topNode.kind + ", should be a AST node");
-    }
-
+    const topNode: ASTNode = stkPop(this.stk, StkNodeKind.ast);
     const expr: ASTNode = topNode.data;
+    const inst = topNode.inst;
     if (expr.kind === "expressionstatement") {
         // statements with a sequence point which followed a ';'
         switch (expr.expression.kind) {
@@ -272,7 +318,7 @@ Evaluator.prototype.evaluate = function() {
     } else if (expr.kind === "assign") {
         const stknode: IStkNode = {
             data: expr,
-            inst: null,
+            inst,
             kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
@@ -280,7 +326,7 @@ Evaluator.prototype.evaluate = function() {
     } else if (expr.kind === "variable") {
         const stknode: IStkNode = {
             data: expr,
-            inst: null,
+            inst,
             kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
@@ -288,7 +334,7 @@ Evaluator.prototype.evaluate = function() {
     } else if (expr.kind === "array") {
         const stknode: IStkNode = {
             data: expr,
-            inst: null,
+            inst,
             kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
@@ -296,7 +342,7 @@ Evaluator.prototype.evaluate = function() {
     } else if (expr.kind === "function") {
         const stknode: IStkNode = {
             data: expr,
-            inst: null,
+            inst,
             kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
@@ -304,7 +350,7 @@ Evaluator.prototype.evaluate = function() {
     } else if (expr.kind === "closure") {
         const stknode: IStkNode = {
             data: expr,
-            inst: null,
+            inst,
             kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
@@ -312,7 +358,7 @@ Evaluator.prototype.evaluate = function() {
     } else if (expr.kind === "method") {
         const stknode: IStkNode = {
             data: expr,
-            inst: null,
+            inst,
             kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
@@ -320,11 +366,19 @@ Evaluator.prototype.evaluate = function() {
     } else if (expr.kind === "global") {
         const stknode: IStkNode = {
             data: expr,
-            inst: null,
+            inst,
             kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
         this.evaluateGlobal();
+    } else if (expr.kind === "echo") {
+        const stknode: IStkNode = {
+            data: expr,
+            inst,
+            kind: StkNodeKind.ast,
+        };
+        this.stk.push(stknode);
+        this.evaluateEcho();
     } else {
         throw new Error("Eval Error: Unknown expression type: " + expr.kind);
     }
@@ -379,12 +433,12 @@ export interface IStkNode {
  * @param {StkNodeKind} kindMustBe
  * @param {string}      astKindMustBe
  */
-export function evalStkPop(stk: Stack<IStkNode>, kindMustBe: StkNodeKind, astKindMustBe?: string, indicatorMustBe?: string): IStkNode {
+export function stkPop(stk: Stack<IStkNode>, kindMustBe: StkNodeKind, astKindMustBe?: string, indicatorMustBe?: string): IStkNode {
     const node = stk.top.value;
     switch (kindMustBe) {
         case StkNodeKind.ast: {
             if (node.kind !== StkNodeKind.ast) {
-                throw new Error("Eval Error: Evaluate wrong node: " + node.kind + ", should contain AST node");
+                throw new Error("Eval Error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain AST node");
             } else if (astKindMustBe) {
                 if (node.data.kind !== astKindMustBe) {
                     throw new Error("Eval Error: Evaluate wrong AST node: " + node.data.kind + ", should be " + astKindMustBe);
@@ -394,19 +448,19 @@ export function evalStkPop(stk: Stack<IStkNode>, kindMustBe: StkNodeKind, astKin
         }
         case StkNodeKind.value: {
             if (node.kind !== StkNodeKind.value) {
-                throw new Error("Eval Error: Evaluate wrong node: " + node.kind + ", should contain value");
+                throw new Error("Eval Error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain value");
             }
             break;
         }
         case StkNodeKind.address: {
             if (node.kind !== StkNodeKind.address) {
-                throw new Error("Eval Error: Evaluate wrong node: " + node.kind + ", should contain address");
+                throw new Error("Eval Error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain address");
             }
             break;
         }
         case StkNodeKind.indicator: {
             if (node.kind !== StkNodeKind.indicator) {
-                throw new Error("Eval Error: Evaluate wrong node: " + node.kind + ", should contain indicator");
+                throw new Error("Eval Error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain indicator");
             } else if (indicatorMustBe) {
                 if (node.inst !== indicatorMustBe) {
                     throw new Error("Eval Error: Evaluate wrong indicator: " + node.inst + ", indicator should be " + indicatorMustBe);

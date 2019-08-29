@@ -20,9 +20,9 @@ type modifiers = [boolean, boolean, boolean, boolean, boolean, boolean, boolean,
  * such as a local variable, an array element, an instance property of an object, or a static property of a class.
  * A VSlot comes into being based on explicit usage of a variable in the source code.
  * A VSlot contains a pointer to a VStore.
- * @param {number | string} name
- * @param {modifiers} modifiers
- * @param {number} vstoreAddr
+ * @property {number | string} name
+ * @property {modifiers} modifiers
+ * @property {number} vstoreAddr
  */
 export interface IVSlot {
     name: number | string;  // if it is an offset in an array, it could be integer or string
@@ -36,10 +36,10 @@ export interface IVSlot {
  * and is created by the Engine as needed.
  * A VStore can contain a scalar value such as an integer or a Boolean,
  * or it can contain a handle pointing to an HStore.
- * @param {string} type - number, boolean, string, array(an array in PHP is actually an ordered map), object...
- * @param {number | boolean | string} val - only scalar type in vstore
- * @param {number} hstoreAddr - hstore address in Heap
- * @param {number} refcount - reference-counting
+ * @property {string} type - number, boolean, string, array(an array in PHP is actually an ordered map), object...
+ * @property {number | boolean | string} val - only scalar type in vstore
+ * @property {number} hstoreAddr - hstore address in Heap
+ * @property {number} refcount - reference-counting
  */
 export interface IVStore {
     type: string;
@@ -61,10 +61,10 @@ export interface IVStore {
  *                                                          ↓            ↓
  *                                                          ↓            ↓
  *                                                 [VStore int 1]  [VStore int 3]
- * @param {string} type - array (an array in PHP is actually an ordered map), object (Point), closure
- * @param {Map} data - data could store array, object, closure,
- * @param {number} refcount - reference-counting
- * @param {any} meta - other meta information, e.g. array's next available index, object's classes
+ * @property {string} type - array (an array in PHP is actually an ordered map), object (Point), closure
+ * @property {Map} data - data could store array, object, closure,
+ * @property {number} refcount - reference-counting
+ * @property {any} meta - other meta information, e.g. array's next available index, object's classes
  */
 export interface IHStore {
     type: string;
@@ -82,9 +82,9 @@ export interface IHStore {
  * Array type abstract model
  * @see
  * https://github.com/php/php-langspec/blob/master/spec/12-arrays.md
- * @param {string} type - array
- * @param {Map} elt - array elements, element name => any data
- * @param {number} idx - optimization: array next available index
+ * @property {string} type - array
+ * @property {Map} elt - array elements, element name => any data
+ * @property {number} idx - optimization: array next available index
  */
 export interface IArray {
     type: string;
@@ -98,9 +98,9 @@ export interface IArray {
  * @see
  * https://www.php.net/manual/en/language.types.object.php
  * https://www.php.net/manual/en/language.oop5.php
- * @param {string} type - object
- * @param {Map} _property - data fields in object
- * @param {string} _class - object's class
+ * @property {string} type - object
+ * @property {Map} _property - data fields in object
+ * @property {string} _class - object's class
  */
 export interface IObject {
     type: string;
@@ -114,12 +114,12 @@ import { Node as ASTNode } from "../php-parser/src/ast/node";
 /**
  * @description
  * Parameter abstract model
- * @param {string} name - parameter name
- * @param {any} value - parameter value, maybe ASTNode
- * @param {ASTNode} type - parameter type: https://www.php.net/manual/en/functions.arguments.php#functions.arguments.type-declaration
- * @param {boolean} byref - if the parameter passed by reference
- * @param {boolean} variadic - simliar with spread opt. https://www.php.net/manual/en/functions.arguments.php#functions.variable-arg-list
- * @param {boolean} nullable - allow pass null other than a variable
+ * @property {string} name - parameter name
+ * @property {any} value - parameter value, maybe ASTNode
+ * @property {ASTNode} type - parameter type: https://www.php.net/manual/en/functions.arguments.php#functions.arguments.type-declaration
+ * @property {boolean} byref - if the parameter passed by reference
+ * @property {boolean} variadic - simliar with spread opt. https://www.php.net/manual/en/functions.arguments.php#functions.variable-arg-list
+ * @property {boolean} nullable - allow pass null other than a variable
  */
 export interface IParameter {
     name: string;
@@ -133,12 +133,12 @@ export interface IParameter {
 /**
  * @description
  * Function or Closure type abstract model
- * @param {string} type - function, closure, method
- * @param {string} name - if it is a closure, it has no name, leave this field as ""
- * @param {string[]} args - arguments
- * @param {ASTNode} body - AST node
- * @param {boolean} byref - if return a reference: https://www.php.net/manual/en/language.references.return.php
- * @param {Map} st - symbol table stores static variables
+ * @property {string} type - function, closure, method
+ * @property {string} name - if it is a closure, it has no name, leave this field as ""
+ * @property {string[]} args - arguments
+ * @property {ASTNode} body - AST node
+ * @property {boolean} byref - if return a reference: https://www.php.net/manual/en/language.references.return.php
+ * @property {Map} st - symbol table stores static variables
  */
 export interface IFunction {
     type: string;
@@ -152,8 +152,8 @@ export interface IFunction {
 /**
  * @description
  * Method type abstract model
- * @param {modifiers} modifiers
- * @param {string} _class - method's class
+ * @property {modifiers} modifiers
+ * @property {string} _class - method's class
  */
 export interface IMethod extends IFunction {
     modifiers: modifiers;
@@ -163,8 +163,8 @@ export interface IMethod extends IFunction {
 /**
  * @description
  * Closure type abstract model
- * @param {boolean} _static - static anonymous function
- * @param {ASTNode} use - use variables in parent scope: https://www.php.net/manual/en/functions.anonymous.php
+ * @property {boolean} _static - static anonymous function
+ * @property {ASTNode} use - use variables in parent scope: https://www.php.net/manual/en/functions.anonymous.php
  * Closures may also inherit variables from the parent scope.
  * Any such variables must be passed to the `use` language construct.
  */
@@ -178,11 +178,11 @@ export interface IClosure extends IFunction {
  * Interface type abstract model
  * @see
  * https://www.php.net/manual/en/language.oop5.interfaces.php
- * @param {string} type - interface
- * @param {string} name
- * @param {string} _extend
- * @param {Map} _const - const variable stored in Heap
- * @param {IMethod} _method - methods stored in Heap
+ * @property {string} type - interface
+ * @property {string} name
+ * @property {string} _extend
+ * @property {Map} _const - const variable stored in Heap
+ * @property {IMethod} _method - methods stored in Heap
  */
 export interface IInterface {
     type: string;
@@ -198,12 +198,12 @@ export interface IInterface {
  * @see
  * https://github.com/php/php-langspec/blob/master/spec/14-classes.md
  * https://www.php.net/manual/en/language.oop5.php
- * @param {modifiers} modifiers
- * @param {string} type - class
- * @param {string} name
- * @param {string} _extend - parent class
- * @param {Map} _property - data fields stored in Heap
- * @param {Map} _method - methods stored in Heap
+ * @property {modifiers} modifiers
+ * @property {string} type - class
+ * @property {string} name
+ * @property {string} _extend - parent class
+ * @property {Map} _property - data fields stored in Heap
+ * @property {Map} _method - methods stored in Heap
  */
 export interface IClass {
     modifiers: modifiers;
@@ -218,12 +218,12 @@ export interface IClass {
 /**
  * @description
  * Memory location model, find variables in specific environment
- * @param {string} type - type of the variable which belongs to this location in heap
- * @param {number} idx - environment index
- * @param {number} vslotAddr - vslot address
- * @param {number} vstoreAddr - vstore address
- * @param {number} hstoreAddr - hstore address
- * @param {number} offset - for string offset
+ * @property {string} type - type of the variable which belongs to this location in heap
+ * @property {number} idx - environment index
+ * @property {number} vslotAddr - vslot address
+ * @property {number} vstoreAddr - vstore address
+ * @property {number} hstoreAddr - hstore address
+ * @property {number} offset - for string offset
  */
 export interface ILocation {
     type: string;
@@ -362,7 +362,20 @@ export function setValue(heap: IHeap, vslotAddr: number, value: any) {
             break;
         }
         case "object": {
-            if (value.type === "array") {
+            if (value === null) {
+                vstore.type = null;
+                vstore.val = value;
+                vstore.hstoreAddr = undefined;
+                const hstore: IHStore = heap.ram.get(vstore.hstoreAddr);
+                if (hstore !== undefined) {
+                    if (hstore.refcount !== 1) {
+                        hstore.refcount -= 1;
+                    } else {
+                        heap.ram.delete(vstore.hstoreAddr);
+                    }
+                    vstore.hstoreAddr = undefined;
+                }
+            } else if (value.type === "array") {
                 // IArray
                 vstore.type = "array";
                 vstore.val = undefined;     // for array data type, we do not use vstore.val

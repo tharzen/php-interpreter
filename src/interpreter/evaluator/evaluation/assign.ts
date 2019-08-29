@@ -9,7 +9,7 @@
  */
 
 import { Node as ASTNode } from "../../php-parser/src/ast/node";
-import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
+import { Evaluator, IStkNode, StkNodeKind, stkPop } from "../evaluator";
 import { setValue } from "../memory";
 
 /**
@@ -49,8 +49,8 @@ import { setValue } from "../memory";
  * $a = function() {};
  * $a = new foo;
  */
-Evaluator.prototype.evaluateAssign = function() {
-    const assignNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "assign");
+export const evaluateAssign = function(this: Evaluator) {
+    const assignNode: ASTNode = stkPop(this.stk, StkNodeKind.ast, "assign");
 
     // ❗️ATTENTION: for the unparser, the original AST in php-parser has been changed, the `operator.sign` should be the operator
     if (assignNode.data.operator.sign === "=") {
@@ -58,7 +58,7 @@ Evaluator.prototype.evaluateAssign = function() {
         // operator
         this.stk.push({
             data: null,
-            inst: assignNode.data.operator,
+            inst: assignNode.data.operator.sign,
             kind: StkNodeKind.indicator,
         });
         // rval, if it is not byref, we need its value, otherwise we need its address
@@ -86,7 +86,7 @@ Evaluator.prototype.evaluateAssign = function() {
 
         // evaluate left expressions and then push the address back into stack
         this.evaluate();
-        let leftResult = evalStkPop(this.stk, StkNodeKind.address);
+        let leftResult = stkPop(this.stk, StkNodeKind.address);
         const rightNode = this.stk.top.value; this.stk.pop();
         this.stk.push(leftResult);
         this.stk.push(rightNode);
@@ -94,19 +94,22 @@ Evaluator.prototype.evaluateAssign = function() {
 
         // evaluate right expressions and then push the value back into stack
         this.evaluate();
+
         let rightResult = null;
         if (this.stk.top.value.kind === StkNodeKind.value) {
             // non-byref assignment
-            rightResult = evalStkPop(this.stk, StkNodeKind.value);          // value
-            leftResult = evalStkPop(this.stk, StkNodeKind.address);         // address
-            evalStkPop(this.stk, StkNodeKind.indicator, undefined, "=");    // =
+            rightResult = stkPop(this.stk, StkNodeKind.value);          // value
+            leftResult = stkPop(this.stk, StkNodeKind.address);         // address
+            stkPop(this.stk, StkNodeKind.indicator, undefined, "=");    // =
             // assignment
-            setValue(this.heap, leftResult.data.vslotAddr, rightResult);
+            // $a = $b; $b is undefined and $a is set to null
+            rightResult.data = rightResult.data === undefined ? null : rightResult.data;
+            setValue(this.heap, leftResult.data.vslotAddr, rightResult.data);
         } else if (this.stk.top.value.kind === StkNodeKind.address) {
             // byref assignment
-            rightResult = evalStkPop(this.stk, StkNodeKind.address);       // address
-            leftResult = evalStkPop(this.stk, StkNodeKind.address);        // address
-            evalStkPop(this.stk, StkNodeKind.indicator, undefined, "=");   // =
+            rightResult = stkPop(this.stk, StkNodeKind.address);       // address
+            leftResult = stkPop(this.stk, StkNodeKind.address);        // address
+            stkPop(this.stk, StkNodeKind.indicator, undefined, "=");   // =
             const leftVslot = this.heap.ram.get(leftResult.data.vslotAddr);
             leftVslot.vstoreAddr = rightResult.data.vstoreAddr;
         }
@@ -117,7 +120,6 @@ Evaluator.prototype.evaluateAssign = function() {
         } else {
             this.stk.push(rightResult);      // for next possible evaluation
         }
-        this.evaluate();
     } else {
         // if it is compound assignment operators, we convert it into common '=' operator, such as $a += 1 => $a = $a + 1
         // $a += &$c;
@@ -146,6 +148,5 @@ Evaluator.prototype.evaluateAssign = function() {
             kind: StkNodeKind.ast,
         };
         this.stk.push(stknode);
-        this.evaluate();
     }
 };

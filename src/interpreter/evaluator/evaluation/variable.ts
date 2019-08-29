@@ -9,8 +9,8 @@
  */
 
 import { Node as ASTNode } from "../../php-parser/src/ast/node";
-import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
-import { getValue, ILocation, IVSlot, IVStore  } from "../memory";
+import { Evaluator, IStkNode, StkNodeKind, stkPop } from "../evaluator";
+import { createVariable, getValue, ILocation, IVSlot, IVStore  } from "../memory";
 
 /**
  * @example
@@ -23,8 +23,8 @@ import { getValue, ILocation, IVSlot, IVStore  } from "../memory";
  * Static class property.           "property"
  * Class and interface constant.    "classconstant"
  */
-Evaluator.prototype.evaluateVariable = function() {
-    const varNode: ASTNode = evalStkPop(this.stk, StkNodeKind.value, "variable");
+export const evaluateVariable = function(this: Evaluator) {
+    const varNode: ASTNode = stkPop(this.stk, StkNodeKind.ast, "variable");
 
     // find the variable in current env
     let varEnv = this.env[this.cur];
@@ -38,6 +38,9 @@ Evaluator.prototype.evaluateVariable = function() {
     if (varNode.inst === "getValue") {
         // get its value, could be boolean, number, string, IArray, IObject, closure (IFunction), null
         stknode.data = getValue(this.heap, vslotAddr);
+        if (stknode.data === undefined) {
+            this.log += ("Notice: Undefined variable: " + varname + "\n");
+        }
         stknode.kind = StkNodeKind.value;
     } else if (varNode.inst === "getAddress") {
         let vslot: IVSlot;
@@ -56,29 +59,15 @@ Evaluator.prototype.evaluateVariable = function() {
         } else {
             // create a new variable without any types
             const env = this.env[this.cur];
-            const newVslotAddr = this.heap.ptr++;
-            const newVstoreAddr = this.heap.ptr++;
-            const newVslot: IVSlot = {
-                modifiers: [false, false, false, false, false, false, false, false],
-                name: varname,
-                vstoreAddr: newVstoreAddr,
-            };
-            const newVstore: IVStore = {
-                hstoreAddr: undefined,
-                refcount: 1,
-                type: null,
-                val: null,
-            };
-            this.heap.ram.set(newVslotAddr, newVslot);
-            this.heap.ram.set(newVstoreAddr, newVstore);
+            const newVslotAddr = createVariable(this.heap, varname);
             env.st._var.set(varNode.data.name, newVslotAddr);
             vslotAddr = newVslotAddr;
-            vstoreAddr = newVstoreAddr;
-            vstore = newVstore;
+            vstoreAddr = this.heap.ram.get(newVslotAddr).vstoreAddr;
+            vstore = this.heap.ram.get(vstoreAddr);
         }
         // get its memory location
         const address: ILocation = {
-            env: vslot.modifiers[0] ? 0 : this.cur,
+            env: this.heap.ram.get(vslotAddr).modifiers[0] ? 0 : 1,
             hstoreAddr,
             type: vstore.type,
             vslotAddr,

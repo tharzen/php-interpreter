@@ -13,12 +13,6 @@ export class Stack<T> extends LinkedList<T> {
 
     /**
      * @description
-     * Returns the number of elements in this list
-     */
-    public length = () => this.length();
-
-    /**
-     * @description
      * Pushes the specified element to the stack
      */
     public push(val: T) {

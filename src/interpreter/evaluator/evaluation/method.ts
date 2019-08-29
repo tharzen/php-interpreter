@@ -2,13 +2,13 @@
  * @authors
  * https://github.com/tharzen/php-interpreter
  * @description
- * The file for function members, called methods evaluation.
+ * The file for function members, called methods, evaluation.
  * @see
  * https://github.com/php/php-langspec/blob/master/spec/14-classes.md#methods
  */
 
 import { Node as ASTNode } from "../../php-parser/src/ast/node";
-import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
+import { Evaluator, IStkNode, StkNodeKind, stkPop } from "../evaluator";
 import { IMethod, IParameter } from "../memory";
 
 /**
@@ -24,8 +24,8 @@ import { IMethod, IParameter } from "../memory";
  *      static-modifier
  *      class-modifier
  */
-Evaluator.prototype.evaluateFunction = function() {
-    const methodNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "method");
+export const evaluateMethod = function(this: Evaluator) {
+    const methodNode: ASTNode = stkPop(this.stk, StkNodeKind.ast, "method");
 
     // evaluate functions to IFunction abstract model, a temporary object
     const methodObj: IMethod = {

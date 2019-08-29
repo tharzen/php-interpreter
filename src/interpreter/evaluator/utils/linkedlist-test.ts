@@ -13,6 +13,8 @@ for (let i = 0; i < 10; i++) {
     const num = Math.floor(Math.random() * Math.floor(10));
     if (num > 3) {
         // add
+        console.log(linkedlist.isEmpty());
+        console.log(linkedlist.length());
         console.log("LinkedList: ");
         console.log(util.inspect(linkedlist, { depth: null }));
         console.log("----------------------------------------");
@@ -23,6 +25,8 @@ for (let i = 0; i < 10; i++) {
         console.log("----------------------------------------");
     } else {
         // remove
+        console.log(linkedlist.isEmpty());
+        console.log(linkedlist.length());
         console.log("LinkedList: ");
         console.log(util.inspect(linkedlist, { depth: null }));
         console.log("----------------------------------------");

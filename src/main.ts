@@ -6,6 +6,10 @@
  */
 import { Interpreter } from "./interpreter/interpreter";
 
-const php = `<?php $a = 1; $a = $d = true; ?>`;
+const php =
+`<?php
+    $a = 1;
+    $a = $b;
+?>`;
 const interpreter = new Interpreter(php);
 interpreter.run();

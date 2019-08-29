@@ -10,7 +10,7 @@
  */
 
 import { Node as ASTNode } from "../../php-parser/src/ast/node";
-import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
+import { Evaluator, IStkNode, StkNodeKind, stkPop } from "../evaluator";
 import { IArray } from "../memory";
 
 /**
@@ -23,8 +23,8 @@ import { IArray } from "../memory";
  * Array("abc" => "123", 1 => 123, ++$c  => "b");
  * [4, 6 => "123"];
  */
-Evaluator.prototype.evaluateArray = function() {
-    const arrayNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "array");
+export const evaluateArray = function(this: Evaluator) {
+    const arrayNode: ASTNode = stkPop(this.stk, StkNodeKind.ast, "array");
 
     // `[1,2] = ...;` is illegal because this is a temporary value not in memory
     if (arrayNode.inst !== undefined && arrayNode.inst === "getAddress") {
@@ -57,7 +57,7 @@ Evaluator.prototype.evaluateArray = function() {
                 kind: StkNodeKind.ast,
             });
             this.evaluate();
-            const keyNode = evalStkPop(this.stk, StkNodeKind.value);
+            const keyNode = stkPop(this.stk, StkNodeKind.value);
             let key = keyNode.data;  // key could be number, string, boolean, null
             /**
              * Key Cast!!!
@@ -94,13 +94,13 @@ Evaluator.prototype.evaluateArray = function() {
                     if (key === null) {
                         key = "";
                     } else {
-                        console.error("Warning:  Illegal offset type.");
+                        this.log += ("Warning:  Illegal offset type.\n");
                         continue traverseArrayLoop;     // do nothing with this array element
                     }
                     break;
                 }
                 default: {
-                    console.error("Warning:  Illegal offset type.");
+                    this.log += ("Warning:  Illegal offset type.\n");
                     continue traverseArrayLoop;     // do nothing with this array element
                 }
             }
@@ -112,7 +112,7 @@ Evaluator.prototype.evaluateArray = function() {
                 kind: StkNodeKind.ast,
             });
             this.evaluate();
-            const valNode = evalStkPop(this.stk, StkNodeKind.value);
+            const valNode = stkPop(this.stk, StkNodeKind.value);
             const val = valNode.data;
             arrayObj.elt.set(key, val);
         } else {
@@ -123,7 +123,7 @@ Evaluator.prototype.evaluateArray = function() {
                 kind: StkNodeKind.ast,
             });
             this.evaluate();
-            const valNode = evalStkPop(this.stk, StkNodeKind.value);
+            const valNode = stkPop(this.stk, StkNodeKind.value);
             const val = valNode.data;
             arrayObj.elt.set(arrayObj.idx, val);
             arrayObj.idx += 1;

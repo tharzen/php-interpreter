@@ -10,7 +10,7 @@
  */
 
 import { Node as ASTNode } from "../../php-parser/src/ast/node";
-import { evalStkPop, Evaluator, IStkNode, StkNodeKind } from "../evaluator";
+import { Evaluator, IStkNode, StkNodeKind, stkPop } from "../evaluator";
 import { IClosure, IParameter } from "../memory";
 
 /**
@@ -31,8 +31,8 @@ import { IClosure, IParameter } from "../memory";
  * };
  * $a(3); // will return Fatal error:  Cannot use lexical variable $f as a parameter name because they are duplicate
  */
-Evaluator.prototype.evaluateClosure = function() {
-    const closureNode: ASTNode = evalStkPop(this.stk, StkNodeKind.ast, "closure");
+export const evaluateClosure = function(this: Evaluator) {
+    const closureNode: ASTNode = stkPop(this.stk, StkNodeKind.ast, "closure");
 
     // evaluate closures to IClosure abstract model, a temporary object
     const closureObj: IClosure = {
