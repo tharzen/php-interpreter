@@ -219,15 +219,13 @@ export interface IClass {
  * @description
  * Memory location model, find variables in specific environment
  * @property {string} type - type of the variable which belongs to this location in heap
- * @property {number} idx - environment index
  * @property {number} vslotAddr - vslot address
  * @property {number} vstoreAddr - vstore address
  * @property {number} hstoreAddr - hstore address
- * @property {number} offset - for string offset, because chars in string cannot be located in heap
+ * @property {number} offset - for string/array offset
  */
 export interface ILocation {
     type: string;
-    env: number;
     vslotAddr: number;
     vstoreAddr: number;
     hstoreAddr?: number;
@@ -328,7 +326,7 @@ export function getValue(heap: IHeap, vslotAddr: number) {
     } else if (type === "null") {
         return null;
     } else {
-        throw new Error("Eval Error: unidentified data type.");
+        throw new Error("Eval error: unidentified data type.");
     }
 }
 

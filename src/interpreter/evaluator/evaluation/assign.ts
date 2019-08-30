@@ -104,7 +104,7 @@ export const evaluateAssign = function(this: Evaluator) {
             // assignment
             // $a = $b; $b is undefined and $a is set to null
             rightResult.data = rightResult.data === undefined ? null : rightResult.data;
-            if (leftResult.data.offset) {
+            if (leftResult.data.type === "string") {
                 let rightChar = "";
                 // this is a location of a character in one string
                 switch (typeof rightResult.data) {

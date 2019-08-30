@@ -53,27 +53,9 @@ And for evaluating statments, the stack will cooperate with some instruction nod
 
 More details see [evaluator/README.md](https://github.com/tharzen/php-interpreter/blob/master/src/interpreter/evaluator/README.md).
 
-### Development
-- variable
-  - scalar type `$` ✔
-  - global `global` ✔
-  - array `Array()` `[]` ✔
-  - object
-- expression
-  - subscript `[]`
-    - array ✔
-    - string ✔
-    - object
-  - assignment
-    - variable =
-    - list-intrinsic =
-    - compound-assignment-expression
-    - coalesce-expression
-    - `? :`
-- loop
-- conditional
-- function
-- class
+## Development
+
+See [DEV.md](https://github.com/tharzen/php-interpreter/blob/master/DEV.md).
 
 ## Built With
 - [glayzzle/php-parser](https://github.com/glayzzle/php-parser/)

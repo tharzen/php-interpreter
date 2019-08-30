@@ -8,8 +8,9 @@ import { Interpreter } from "./interpreter/interpreter";
 
 const php =
 `<?php
-    $a = "!23";
-    $a[6] = [3,4];
+$a = "123";
+$a[10] = "a";
+$d = $a[];
 ?>`;
 const interpreter = new Interpreter(php);
 interpreter.run();

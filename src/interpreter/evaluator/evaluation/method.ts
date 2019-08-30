@@ -76,7 +76,7 @@ export const evaluateMethod = function(this: Evaluator) {
             methodObj.modifiers[5] = true;
             break;
         default:
-            throw new Error("Eval Error: Unidentified method visibility: " + methodNode.visibility);
+            throw new Error("Eval error: Unidentified method visibility: " + methodNode.visibility);
     }
 
     // need to push the result to the stack for possible next evaluation

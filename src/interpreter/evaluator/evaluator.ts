@@ -179,7 +179,7 @@ Evaluator.prototype.run = function() {
     while (this.stk.length() > 0) {
         this.evaluate();
     }
-    console.log(util.inspect(this, { depth: null }));
+    console.log(util.inspect(this, { depth: null }));       // for test
     return this.res;
 };
 
@@ -388,7 +388,7 @@ Evaluator.prototype.evaluate = function() {
         this.stk.push(stknode);
         this.evaluateEcho();
     } else {
-        throw new Error("Eval Error: Unknown expression type: " + expr.kind);
+        throw new Error("Eval error: Unknown expression type: " + expr.kind);
     }
 };
 
@@ -446,32 +446,32 @@ export function stkPop(stk: Stack<IStkNode>, kindMustBe: StkNodeKind, astKindMus
     switch (kindMustBe) {
         case StkNodeKind.ast: {
             if (node.kind !== StkNodeKind.ast) {
-                throw new Error("Eval Error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain AST node");
+                throw new Error("Eval error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain AST node");
             } else if (astKindMustBe) {
                 if (node.data.kind !== astKindMustBe) {
-                    throw new Error("Eval Error: Evaluate wrong AST node: " + node.data.kind + ", should be " + astKindMustBe);
+                    throw new Error("Eval error: Evaluate wrong AST node: " + node.data.kind + ", should be " + astKindMustBe);
                 }
             }
             break;
         }
         case StkNodeKind.value: {
             if (node.kind !== StkNodeKind.value) {
-                throw new Error("Eval Error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain value");
+                throw new Error("Eval error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain value");
             }
             break;
         }
         case StkNodeKind.address: {
             if (node.kind !== StkNodeKind.address) {
-                throw new Error("Eval Error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain address");
+                throw new Error("Eval error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain address");
             }
             break;
         }
         case StkNodeKind.indicator: {
             if (node.kind !== StkNodeKind.indicator) {
-                throw new Error("Eval Error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain indicator");
+                throw new Error("Eval error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain indicator");
             } else if (indicatorMustBe) {
                 if (node.inst !== indicatorMustBe) {
-                    throw new Error("Eval Error: Evaluate wrong indicator: " + node.inst + ", indicator should be " + indicatorMustBe);
+                    throw new Error("Eval error: Evaluate wrong indicator: " + node.inst + ", indicator should be " + indicatorMustBe);
                 }
             }
             break;

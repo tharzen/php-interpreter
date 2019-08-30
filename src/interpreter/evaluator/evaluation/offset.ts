@@ -8,6 +8,7 @@
  * https://github.com/php/php-langspec/blob/master/spec/10-expressions.md#subscript-operator
  */
 
+import util = require("util");
 import { Node as ASTNode } from "../../php-parser/src/ast/node";
 import { Evaluator, IStkNode, StkNodeKind, stkPop } from "../evaluator";
 import { createVariable } from "../memory";
@@ -132,6 +133,7 @@ export const evaluateOffset = function(this: Evaluator) {
                     this.log += ("Notice: Uninitialized string offset " + offsetName + "\n");
                 }
                 stknode.data = str[offsetName];  // if it still out of bound, there will be a undefined
+                stknode.kind = StkNodeKind.value;
                 this.stk.push(stknode);
                 return;
             } else if (typeof derefNode.data === "object" && derefNode.data.type === "IArray") {    // array
@@ -238,7 +240,7 @@ export const evaluateOffset = function(this: Evaluator) {
                 throw new Error("Parse error: syntax error, unexpected '&', expecting end of file");
             }
             if (typeof this.heap.ram.get(derefNode.data.vstoreAddr).val !== "string") {
-                throw new Error("Eval Error: wrong type in writing string offset");
+                throw new Error("Eval error: wrong type in writing string offset");
             }
             // If both dereferencable-expression and expression designate strings,
             // expression is treated as if it specified the int key zero instead and a non-fatal error is produces.
@@ -268,6 +270,30 @@ export const evaluateOffset = function(this: Evaluator) {
             if (offsetName === undefined) {
                 offsetName = hstore.meta;
                 hstore.meta += 1;
+            } else {
+                switch (typeof offsetName) {
+                    case "boolean": {
+                        offsetName = Number(offsetName);
+                        break;
+                    }
+                    case "string": {
+                        // check if it could be converted to number
+                        const validDecInt = /^(|(-)?[1-9][0-9]*)$/;    // 010 × | 10.0 × | -10 √ | -0 √
+                        if (validDecInt.test(offsetName)) {
+                            offsetName = Number(offsetName);
+                        }
+                        break;
+                    }
+                    case "number": {
+                        offsetName = Math.trunc(offsetName);  // maybe 0 and -0, but the storing map's key is string, they will all be 0
+                        break;
+                    }
+                    default:
+                        break;
+                }
+                if (typeof offsetName === "number") {
+                    hstore.meta = offsetName >= hstore.meta ? offsetName + 1 : hstore.meta;
+                }
             }
             let offsetVslotAddr = hstore.data.get(offsetName);
             if (offsetVslotAddr === undefined) {
@@ -282,6 +308,7 @@ export const evaluateOffset = function(this: Evaluator) {
             loc.vslotAddr = offsetVslotAddr;
             loc.vstoreAddr = vslot.vstoreAddr;
             loc.hstoreAddr = vstore.hstoreAddr;
+            loc.offset = offsetName;
             stknode.data = loc;
             stknode.kind = StkNodeKind.address;
             this.stk.push(stknode);

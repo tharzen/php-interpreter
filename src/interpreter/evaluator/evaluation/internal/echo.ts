@@ -54,12 +54,12 @@ export const evaluateEcho = function(this: Evaluator) {
                 } else if (resultNode.data.type === "object") {
                     throw new Error("Recoverable fatal error: Object of class a could not be converted to string");
                 } else {
-                    throw new Error("Eval Error: unidentified echo type");
+                    throw new Error("Eval error: unidentified echo type");
                 }
                 break;
             }
             default: {
-                throw new Error("Eval Error: unidentified echo type");
+                throw new Error("Eval error: unidentified echo type");
             }
         }
     });

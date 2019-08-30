@@ -68,7 +68,6 @@ export const evaluateVariable = function(this: Evaluator) {
         }
         // get its memory location
         const address: ILocation = {
-            env: this.heap.ram.get(vslotAddr).modifiers[0] ? 0 : 1,
             hstoreAddr,
             type: vstore.type,
             vslotAddr,
