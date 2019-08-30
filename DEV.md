@@ -18,16 +18,18 @@
     - compound-assignment-expression
     - coalesce-expression
     - `? :`
+  - call function
+  - new object
 - loop
 - conditional
-- function declaration
+- function declaration ✔
 - class declaration
-  - method declaration
-  - property declaration
+  - method declaration ✔
+- closure ✔
 
 ## Testcases
 
-Try to change the PHP in `src/main.ts` and run `ts-node main.ts`.
+Try to change the PHP input in `src/main.ts` and then run `ts-node main.ts`. The evaluator will be printed for test.
 
 All passed testcases:
 ```php
