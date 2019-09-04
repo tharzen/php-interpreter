@@ -200,7 +200,7 @@ Evaluator.prototype.run = function() {
     while (this.stk.length() > 0) {
         this.evaluate();
     }
-    console.log(util.inspect(this, { depth: null }));       // for test
+    // console.log(util.inspect(this, { depth: null }));       // test
     return this.res;
 };
 

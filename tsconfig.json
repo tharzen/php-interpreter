@@ -9,5 +9,6 @@
       "noImplicitAny": false,
       "noImplicitReturns": true,
       "noImplicitThis": true
-    }
+    },
+    "exclude": ["node_modules", "**/*.spec.ts"]
 }

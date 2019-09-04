@@ -1,5 +1,7 @@
 # Development
 
+Use [Jest](https://jestjs.io/en/) testing framework.
+
 ## Language Constructs
 
 - variable
@@ -77,4 +79,8 @@ function f($a, $b) {
     $a = 1;
     $b = 2;
 }
+```
+```php
+// store a constant into memory
+const A = 1;
 ```
