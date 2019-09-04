@@ -25,6 +25,7 @@ export class Env {
         this.name = name;
         this.st = {
             _class: new Map(),
+            _constant: new Map(),
             _function: new Map(),
             _interface: new Map(),
             _namespace: new Map(),
@@ -39,6 +40,7 @@ export class Env {
  * A symbol table is an abstract data type (ADT) for tracking various symbols in source code.
  * These symbols' addresses are stored in Heap of evaluator.
  * @property {Map} _var -       variable name => vslot address
+ * @property {Map} _constant -  constant name => address
  * @property {Map} _class -     class name => address
  * @property {Map} _function -  function name => address
  * @property {Map} _trait -     trait name => address
@@ -47,6 +49,7 @@ export class Env {
  */
 export interface ISymbolTable {
     _var: Map<string, number>;
+    _constant: Map<string, number>;
     _class: Map<string, number>;
     _function: Map<string, number>;
     _trait: Map<string, number>;

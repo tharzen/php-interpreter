@@ -18,7 +18,7 @@ import * as Parser from "./php-parser/src/index.js";
 /**
  * @property {AST}        ast - abstract syntax tree
  * @property {Evaluator}  evl - evaluator which follow language rules to convert parse tree to a value
- *                           and read and modify the environment as needed
+ *                              and read and modify the environment as needed
  * @property {Map}        ini - options from `php.ini` file, each setting corresponds to a key in map
  * @property {string}     res - final interpreted result
  * @property {string}     src - PHP source code
@@ -49,6 +49,6 @@ Interpreter.prototype.run = function() {
     });
     // TODO: preset some options such as from `php.ini`: this.ini and then evaluate AST
     this.ast = parser.parseCode(this.src);
-    this.evl = new Evaluator(this.ast);
+    this.evl = new Evaluator(parser, this.ast);
     this.res = this.evl.run();
 };

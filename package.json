@@ -4,7 +4,7 @@
   "description": "A PHP interpreter written by JavaScript",
   "main": "main.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -26,7 +26,10 @@
   },
   "homepage": "https://github.com/eou/php-interpreter#readme",
   "devDependencies": {
+    "@types/jest": "^24.0.18",
     "@types/node": "^12.6.9",
+    "jest": "^24.9.0",
+    "ts-jest": "^24.0.2",
     "ts-node": "^8.3.0",
     "tslint": "^5.18.0"
   }

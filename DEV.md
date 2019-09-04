@@ -1,4 +1,4 @@
-# 🔨Development
+# Development
 
 ## Language Constructs
 
@@ -70,4 +70,11 @@ $a = "123";
 $a[10] = "a";
 // store $b into memory, $b = "2"
 $b = $a[1];
+```
+```php
+// store a function declaration object into memory
+function f($a, $b) {
+    $a = 1;
+    $b = 2;
+}
 ```

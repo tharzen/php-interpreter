@@ -43,29 +43,26 @@ export const evaluateFunction = function(this: Evaluator) {
         type: "",
     };
 
-    functionObj.type = functionNode.kind;
-    functionObj.name = functionNode.name.name;
-    functionNode.arguments.forEach((parameterNode: ASTNode) => {
+    functionObj.type = functionNode.data.kind;
+    functionObj.name = functionNode.data.name.name;
+    functionNode.data.arguments.forEach((parameterNode: ASTNode) => {
         // parameters can be passed by reference
         // https://www.php.net/manual/en/language.references.pass.php
         const parameter: IParameter = {
             byref: parameterNode.byref,
-            name: parameterNode.name,
+            name: parameterNode.name.name,
             nullable: parameterNode.nullable,
             type: parameterNode.type,
             value: parameterNode.value,
             variadic: parameterNode.variadic,
         };
         functionObj.args.push(parameter);
+        console.log(parameter);
     });
-    functionObj.body = functionNode.body;   // could be a block Node
-    functionObj.byref = functionNode.byref; // if return a reference or not
+    functionObj.body = functionNode.data.body;   // could be a block Node
+    functionObj.byref = functionNode.data.byref; // if return a reference or not
 
-    // need to push the result to the stack for possible next evaluation
-    const stknode: IStkNode = {
-        data: functionObj,
-        inst: null,
-        kind: StkNodeKind.value,
-    };
-    this.stk.push(stknode);
+    // save it to global environment because all funtions in php are global
+    this.heap.ram.set(this.heap.ptr++, functionObj);
+    this.env[0].st._function.set(functionObj.name, this.heap.ptr - 1);
 };

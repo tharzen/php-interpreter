@@ -82,7 +82,7 @@ export interface IHStore {
  * Array type abstract model
  * @see
  * https://github.com/php/php-langspec/blob/master/spec/12-arrays.md
- * @property {string} type - array
+ * @property {string} type - "array"
  * @property {Map} elt - array elements, element name => any data
  * @property {number} idx - optimization: array next available index
  */
@@ -98,7 +98,7 @@ export interface IArray {
  * @see
  * https://www.php.net/manual/en/language.types.object.php
  * https://www.php.net/manual/en/language.oop5.php
- * @property {string} type - object
+ * @property {string} type - "object"
  * @property {Map} _property - data fields in object
  * @property {string} _class - object's class
  */
@@ -133,7 +133,7 @@ export interface IParameter {
 /**
  * @description
  * Function or Closure type abstract model
- * @property {string} type - function, closure, method
+ * @property {string} type - "function", "closure", "method"
  * @property {string} name - if it is a closure, it has no name, leave this field as ""
  * @property {string[]} args - arguments
  * @property {ASTNode} body - AST node
@@ -178,8 +178,8 @@ export interface IClosure extends IFunction {
  * Interface type abstract model
  * @see
  * https://www.php.net/manual/en/language.oop5.interfaces.php
- * @property {string} type - interface
- * @property {string} name
+ * @property {string} type - "interface"
+ * @property {string} name - interface name
  * @property {string} _extend
  * @property {Map} _const - const variable stored in Heap
  * @property {IMethod} _method - methods stored in Heap
@@ -199,9 +199,9 @@ export interface IInterface {
  * https://github.com/php/php-langspec/blob/master/spec/14-classes.md
  * https://www.php.net/manual/en/language.oop5.php
  * @property {modifiers} modifiers
- * @property {string} type - class
- * @property {string} name
- * @property {string} _extend - parent class
+ * @property {string} type - "class"
+ * @property {string} name - class name
+ * @property {string} _extend - parent class, only allow single inheritance
  * @property {Map} _property - data fields stored in Heap
  * @property {Map} _method - methods stored in Heap
  */
@@ -361,7 +361,7 @@ export function setValue(heap: IHeap, vslotAddr: number, value: any) {
         }
         case "object": {
             if (value === null) {
-                vstore.type = null;
+                vstore.type = "null";
                 vstore.val = value;
                 vstore.hstoreAddr = undefined;
                 const hstore: IHStore = heap.ram.get(vstore.hstoreAddr);
@@ -454,21 +454,6 @@ export function setValue(heap: IHeap, vslotAddr: number, value: any) {
                     type: "closure",
                 };
                 heap.ram.set(newHstoreAddr, initNewHstore);
-            } else if (value === null) {
-                vstore.type = "null";
-                vstore.val = value;
-                if (vstore.hstoreAddr !== undefined) {
-                    // remove previous connection
-                    const hstore: IHStore = heap.ram.get(vstore.hstoreAddr);
-                    if (hstore !== undefined) {
-                        if (hstore.refcount !== 1) {
-                            hstore.refcount -= 1;
-                        } else {
-                            heap.ram.delete(vstore.hstoreAddr);
-                        }
-                    }
-                    vstore.hstoreAddr = undefined;
-                }
             } else {
                 throw new Error("Eval error: cannot set value to variables with undefined type.");
             }

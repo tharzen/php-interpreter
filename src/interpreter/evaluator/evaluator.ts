@@ -13,11 +13,13 @@ import { evaluateAssign } from "./evaluation/assign";
 import { evaluateBinary } from "./evaluation/bin";
 import { evaluateClass } from "./evaluation/class";
 import { evaluateClosure } from "./evaluation/closure";
+import { evaluateConstant } from "./evaluation/const";
 import { evaluateFunction } from "./evaluation/function";
 import { evaluateGlobal } from "./evaluation/global";
 import { evaluateEcho } from "./evaluation/internal/echo";
 import { evaluateMethod } from "./evaluation/method";
 import { evaluateOffset } from "./evaluation/offset";
+import { evaluateProperty } from "./evaluation/property";
 import { evaluateVariable } from "./evaluation/variable";
 import { Stack } from "./utils/stack";
 
@@ -26,7 +28,8 @@ import { Stack } from "./utils/stack";
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
 
 /**
- * @property {AST}     ast - abstract syntax tree
+ * @property {any}     psr - php-parser, for 'including', 'require'
+ * @property {AST}     ast - abstract syntax tree of current file
  * @property {Map}     env - two environments which technically are scopes, global and local
  * @property {number}  cur - current environment index, 0 for global, 1 for local
  * @property {string}  res - final evaluation result, currently we assume it should always be string
@@ -35,6 +38,7 @@ import { Stack } from "./utils/stack";
  * @property {IHeap}   heap - storage, such as variable bindings, function declaration, class declaration, namespace location and etc.
  */
 export class Evaluator {
+    public psr: any;
     public ast: AST;
     public env: Env[];
     public cur: number;
@@ -95,6 +99,14 @@ export class Evaluator {
 
     /**
      * @description
+     * Evaluate const variables including class constants and global constants
+     * @file
+     * evaluator/evaluation/const.ts
+     */
+    public evaluateConstant = evaluateConstant;
+
+    /**
+     * @description
      * Evaluate user-defined function
      * @file
      * evaluator/evaluation/function.ts
@@ -127,11 +139,19 @@ export class Evaluator {
 
     /**
      * @description
-     * Evaluate the local variable
+     * Evaluate the local variables
      * @file
      * evaluator/evaluation/variable.ts
      */
     public evaluateVariable = evaluateVariable;
+
+    /**
+     * @description
+     * Evaluate the class properties
+     * @file
+     * evaluator/evaluation/property.ts
+     */
+    public evaluateProperty = evaluateProperty;
 
     /**
      * @description
@@ -149,7 +169,8 @@ export class Evaluator {
      */
     public evaluateEcho = evaluateEcho;
 
-    constructor(ast: AST) {
+    constructor(psr: any, ast: AST) {
+        this.psr = psr;
         this.ast = ast;
         this.env = [new Env("global"), new Env("local")];
         this.cur = 0;
@@ -224,6 +245,12 @@ Evaluator.prototype.lift = function(): ASTNode[] {
                         this.stk.push(stknode);
                         // evaluate class and save declaration into heap
                         this.evaluate();
+                        const classObj = stkPop(this.stk, StkNodeKind.value);
+                        if (classObj.data.type !== "class") {
+                            throw new Error("Eval error: should be class object, but not " + classObj.data.type);
+                        }
+                        this.heap.ram.set(this.heap.ptr++, classObj.data);
+                        this.env[0].st._function.set(classObj.data.name, this.heap.ptr - 1);
                         break;
                     }
                 }
@@ -355,6 +382,30 @@ Evaluator.prototype.evaluate = function() {
         };
         this.stk.push(stknode);
         this.evaluateClosure();
+    } else if (expr.kind === "classconstant" || expr.kind === "constantstatement") {
+        expr.constants.forEach((constNode: ASTNode) => {
+            const stknode: IStkNode = {
+                data: constNode,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateConstant();
+            // save the const to symbol table
+            const addressNode: ASTNode = stkPop(this.stk, StkNodeKind.address);
+            const vslot = this.heap.ram.get(addressNode.data.vslotAddr);
+            this.env[0].st._constant.set(vslot.name, addressNode.data.vslotAddr);
+        }); 
+    } else if (expr.kind === "propertystatement") {
+        expr.properties.forEach((propertyNode: ASTNode) => {
+            const stknode: IStkNode = {
+                data: propertyNode,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateProperty();
+        });
     } else if (expr.kind === "method") {
         const stknode: IStkNode = {
             data: expr,
