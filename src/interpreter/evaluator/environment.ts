@@ -12,8 +12,8 @@
 /**
  * @description
  * Environment of the evaluator.
- * (SICP) Each environment frame is a table (possibly empty) of bindings, which associate variable names with their corresponding values.
- * (SICP) Each environment frame also has a pointer to its enclosing environment.
+ * Each environment frame is a table (possibly empty) of bindings, which associate variable names with their corresponding values.
+ * Each environment frame also has a pointer to its enclosing environment.
  * Without any namespace definition, all classes and functions definition are placed into the global space
  * @property {string} name - environment name
  * @property {ISymbolTable} st - symbol table
