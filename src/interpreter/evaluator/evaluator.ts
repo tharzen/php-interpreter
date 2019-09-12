@@ -24,11 +24,13 @@ import { evaluateMethod } from "./evaluation/method";
 import { evaluateOffset } from "./evaluation/offset";
 import { evaluateProperty } from "./evaluation/property";
 import { evaluateVariable } from "./evaluation/variable";
-import { Stack } from "./utils/stack";
+import { Stack, StackType } from "./utils/stack";
 
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
 // ██████████████████████████████████████████████ EVALUATOR █████████████████████████████████████████████████
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
+
+type EvalStack = StackType<IStkNode>;
 
 /**
  * @property {any}     psr - php-parser, for 'including', 'require'
@@ -40,16 +42,19 @@ import { Stack } from "./utils/stack";
  * @property {Stack}   stk - stack keeping a log of the functions which are called during the execution
  * @property {IHeap}   heap - storage, such as variable bindings, function declaration, class declaration, namespace location and etc.
  */
-export class Evaluator {
-    public psr: any;
+export interface EvaluationState {
     public ast: AST;
     public env: Env[];
     public cur: number;
     public res: string;
     public log: string;
-    public stk: Stack<IStkNode>;
+    public stk: EvalStack;
     public heap: IHeap;
+}
 
+export class Evaluator {
+    public psr: any;
+    
     /**
      * @description
      * The main entry for running the evaluator
@@ -58,9 +63,9 @@ export class Evaluator {
 
     /**
      * @description
-     * Reorder the expressions, lift some of them, such as, functions are global
+     * Reorder the expressions, preprocess some of them, such as, functions are global
      */
-    public lift: () => ASTNode[];
+    public preprocess: () => ASTNode[];
 
     /**
      * @description
@@ -196,29 +201,35 @@ export class Evaluator {
      */
     public evaluateEcho = evaluateEcho;
 
-    constructor(psr: any, ast: AST) {
+    constructor(psr: any) {
         this.psr = psr;
-        this.ast = ast;
-        this.env = [new Env("global"), new Env("local")];
-        this.cur = 0;
-        this.res = "";
-        this.log = "";
-        this.stk = new Stack<IStkNode>();
-        this.heap = {
-            ptr: 0,
-            ram: new Map(),
-        };
     }
 }
 
-Evaluator.prototype.run = function() {
+Evaluator.prototype.initialEvaluationState(ast: AST): EvaluationState {
+  return { ast: AST,
+      env: [new Env("global"), new Env("local")];
+      cur: 0;
+      res: "";
+      log: "";
+      stk: Stack.empty;
+      heap: {
+          ptr: 0,
+          ram: new Map(),
+      }
+    };
+}
+
+Evaluator.prototype.run = function(evaluationState: EvaluationState) {
     // the root node of AST is "Program", its children field contains all expressions needed to be evaluated,
     // before pushing to stack, we need to LIFT some statements such as all functions, classes without extends / implements / use, 
     // and all traits, all interfaces, because they are global
     // notice that "Program" may contain many different php snippet around "<?php ?>" php tags
     // I have add these tags into AST for getting their positions (did not exist in our php-parser before)
     // they can be seen as one part PHP as long as they are in the same php file or the same namespace
-    const reorderAST = this.lift();
+    evaluationState = this.preprocess(evaluationState);
+    /*
+     const reorderAST = 
     for (const astNode of reorderAST) {
         const stknode: IStkNode = {
             data: astNode,
@@ -227,15 +238,17 @@ Evaluator.prototype.run = function() {
         };
         this.stk.push(stknode);
     }
-    while (this.stk.length() > 0) {
-        this.evaluate();
+    */
+    while (!Stack.isEmpty(evaluationState.stk)) {
+        evaluationState = this.evaluate(evaluationState);
     }
-    console.log(util.inspect(this, { depth: null }));       // test
-    return this.res;
+    console.log(util.inspect(evaluationState, { depth: null }));       // test
+    return evaluationState.res;
 };
 
-Evaluator.prototype.lift = function(): ASTNode[] {
+Evaluator.prototype.preprocess = function(evaluationState: EvaluationState): EvaluationState {
     // putting all PHP snippets into one array, surrounded with "<?php ?>"
+    // TODO
     const phpSnippets: ASTNode[] = [];
     this.ast.children.forEach((node: ASTNode) => {
         if (node.kind === "phpopentag") {
@@ -292,7 +305,7 @@ Evaluator.prototype.lift = function(): ASTNode[] {
                     if (useTrait) {
                         reorderAST.unshift(child);     // class with trait, do nothing
                     } else {
-                        // lift
+                        // preprocess
                         const stknode: IStkNode = {
                             data: child,
                             inst: null,
@@ -301,7 +314,8 @@ Evaluator.prototype.lift = function(): ASTNode[] {
                         this.stk.push(stknode);
                         // evaluate class and save declaration into heap
                         this.evaluate();
-                        const classObj = stkPop(this.stk, StkNodeKind.value);
+                        const [classObj, newStk] = stkPop(this.stk, StkNodeKind.value);
+                        this.stk = newStk;
                         if (classObj.data.type !== "class") {
                             throw new Error("Eval error: should be class object, but not " + classObj.data.type);
                         }
@@ -321,217 +335,253 @@ Evaluator.prototype.lift = function(): ASTNode[] {
     return reorderAST;
 };
 
-Evaluator.prototype.evaluate = function() {
+Evaluator.prototype.evaluate = function(evaluationState: EvaluationState): EvaluationState {
     // each time evaluate top element of stack
-    const topNode: ASTNode = stkPop(this.stk, StkNodeKind.ast);
-    const expr: ASTNode = topNode.data;
+    const [topNode: IStkNode, stkRemaining: EvalStack] = stkPop(evaluationState.stk, StkNodeKind.ast);
     const inst = topNode.inst;
-    if (expr.kind === "expressionstatement") {
-        // statements with a sequence point which followed a ';'
-        switch (expr.expression.kind) {
-            // A statement with only a scalar type data such as: `[1,2];` `"abc";` `1.6;` actually do nothing before the sequence point
-            // so we don't need to evaluate it
-            // if it might be evaluated, it will be treated as a rval which we need its value,
-            // such as `$a[];` will throw reading fatal error in offical Zend PHP interpreter
-            case "array":
-            case "number":
-            case "string":
-            case "boolean":
-                break;
-            case "assign": {
-                const instNode: IStkNode = {
-                    data: null,
-                    inst: "endAssign",
-                    kind: StkNodeKind.indicator,
-                };
-                this.stk.push(instNode);    // end insurance
+    if(topNode.kind === StkNodeKind.value) { // data is either Boolean, Number, String, IArray, IObject, ILocation (address), IResource (not implemented)
+      // stkRemaining.head.kind should be StkNodeKind.computation 
+      // stkRemaining.head.inst should give the instruction on what to do with the value.
+    
+      // topNode.data contains the values that will be useful for computation;
+    } else if(topNode.kind === StkNodeKind.computation) {
+      if(topNode.inst === "address") {
+        // At this point, these computations should take 0 arguments (e.g. computing a variable's address and creating one if it does not exists)
+      } else if(topNode.inst === "ast") {
+        const expr: ASTNode = topNode.data;
+        if (expr.kind === "expressionstatement") {
+            const instNode: IStkNode = {
+                data: null,
+                inst: "endExpressionStatement",
+                kind: StkNodeKind.computation,
+            };
+            return {...evaluationState, stk: Stack.push(Stack.push(stkRemaining, instNode), expr.expression)};
+            /*
+            return Reuse({
+              stk: New({
+                head: Reuse("head", "data", "expression")
+                tail: New({
+                  head: New({}, {data: null, inst: "endExpressionStatement", kind: StkNodeKind.computation}),
+                  tail: Reuse("tail");
+                })
+              })
+            });
+            return Reuse({
+              stk: Reuse({
+                head: Reuse("data", "expression")
+                tail: New({
+                  head: New({}, {data: null, inst: "endExpressionStatement", kind: StkNodeKind.computation}),
+                  tail: Reuse();
+                })
+              })
+            });
+            */
+        }/* else {expr.k]
+            // statements with a sequence point which followed a ';'
+            switch (expr.expression.kind) {
+                // A statement with only a scalar type data such as: `[1,2];` `"abc";` `1.6;` actually do nothing before the sequence point
+                // so we don't need to evaluate it
+                // if it might be evaluated, it will be treated as a rval which we need its value,
+                // such as `$a[];` will throw reading fatal error in offical Zend PHP interpreter
+                case "array": // TODO: Do evaluate the expressions. No need to build the array, just evaluate expressions one by one.
+                case "number":
+                case "string":
+                case "boolean":
+                    return {...evaluationState, stk: stkRemaining};
+                case "assign": {
+                    const instNode: IStkNode = {
+                        data: null,
+                        inst: "endAssign",
+                        kind: StkNodeKind.computation,
+                    };
+                    const stknode: IStkNode = {
+                        data: expr.expression,
+                        inst: null,
+                        kind: StkNodeKind.ast,
+                    };
+                    //this.evaluateAssign();
+                    return {...evaluationState, stk: Stack.push(Stack.push(stkRemaining, instNode), stknode};
+                }
+                case "variable": {
+                    const instNode: IStkNode = {
+                        data: null,
+                        inst: "endVariable",
+                        kind: StkNodeKind.computation,
+                    };
+                    this.stk.push(instNode);    // insurance
+                    // declare a new variable or do nothing if it already exists
+                    const stknode: IStkNode = {
+                        data: expr.expression,
+                        inst: null,
+                        kind: StkNodeKind.ast,
+                    };
+                    this.stk.push(stknode);
+                    this.evaluateVariable();
+                    break;
+                }
+                default:
+                    break;
+            }
+        }*/ else if (expr.kind === "boolean") {
+            // directly evaluate
+            const stknode: IStkNode = {
+                data: Boolean(expr.value),
+                inst: null,
+                kind: StkNodeKind.value,
+            };
+            this.stk.push(stknode);
+        } else if (expr.kind === "number") {
+            // directly evaluate
+            const stknode: IStkNode = {
+                data: Number(expr.value),    // 0x539 == 02471 == 0b10100111001 == 1337e0
+                inst: null,
+                kind: StkNodeKind.value,
+            };
+            this.stk.push(stknode);
+        } else if (expr.kind === "string") {
+            // directly evaluate
+            const stknode: IStkNode = {
+                data: String(expr.value),
+                inst: null,
+                kind: StkNodeKind.value,
+            };
+            this.stk.push(stknode);
+        } else if (expr.kind === "assign") {
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateAssign();
+        } else if (expr.kind === "variable") {
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateVariable();
+        } else if (expr.kind === "array") {
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateArray();
+        } else if (expr.kind === "function") {
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateFunction();
+        } else if (expr.kind === "closure") {
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateClosure();
+        } else if (expr.kind === "classconstant" || expr.kind === "constantstatement") {
+            expr.constants.forEach((constNode: ASTNode) => {
                 const stknode: IStkNode = {
-                    data: expr.expression,
-                    inst: null,
+                    data: constNode,
+                    inst,
                     kind: StkNodeKind.ast,
                 };
                 this.stk.push(stknode);
-                this.evaluateAssign();
-                break;
-            }
-            case "variable": {
-                const instNode: IStkNode = {
-                    data: null,
-                    inst: "endVariable",
-                    kind: StkNodeKind.indicator,
-                };
-                this.stk.push(instNode);    // insurance
-                // declare a new variable or do nothing if it already exists
+                this.evaluateConstant();
+                // save the const to symbol table
+                const addressNode: ASTNode = stkPop(this.stk, StkNodeKind.address);
+                const vslot = this.heap.ram.get(addressNode.data.vslotAddr);
+                this.env[0].st._constant.set(vslot.name, addressNode.data.vslotAddr);
+            });
+        } else if (expr.kind === "propertystatement") {
+            expr.properties.forEach((propertyNode: ASTNode) => {
                 const stknode: IStkNode = {
-                    data: expr.expression,
-                    inst: null,
+                    data: propertyNode,
+                    inst,
                     kind: StkNodeKind.ast,
                 };
                 this.stk.push(stknode);
-                this.evaluateVariable();
-                break;
-            }
-            default:
-                break;
+                this.evaluateProperty();
+            });
+        } else if (expr.kind === "inline") {
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateInline();
+        } else if (expr.kind === "method") {
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateMethod();
+        } else if (expr.kind === "global") {
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateGlobal();
+        } else if (expr.kind === "offsetlookup") {
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateOffset();
+        } else if (expr.kind === "echo") {
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateEcho();
+        } else if (expr.kind === "switch") {
+            const instNode: IStkNode = {
+                data: null,
+                inst: "endSwitch",
+                kind: StkNodeKind.computation,
+            };
+            this.stk.push(instNode);    // end insurance
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateSwitch();
+        } else if (expr.kind === "if") {
+            const instNode: IStkNode = {
+                data: null,
+                inst: "endIf",
+                kind: StkNodeKind.computation,
+            };
+            this.stk.push(instNode);    // end insurance
+            const stknode: IStkNode = {
+                data: expr,
+                inst,
+                kind: StkNodeKind.ast,
+            };
+            this.stk.push(stknode);
+            this.evaluateIf();
+        } else {
+            throw new Error("Eval error: Unknown expression type: " + expr.kind);
         }
-    } else if (expr.kind === "boolean") {
-        // directly evaluate
-        const stknode: IStkNode = {
-            data: Boolean(expr.value),
-            inst: null,
-            kind: StkNodeKind.value,
-        };
-        this.stk.push(stknode);
-    } else if (expr.kind === "number") {
-        // directly evaluate
-        const stknode: IStkNode = {
-            data: Number(expr.value),    // 0x539 == 02471 == 0b10100111001 == 1337e0
-            inst: null,
-            kind: StkNodeKind.value,
-        };
-        this.stk.push(stknode);
-    } else if (expr.kind === "string") {
-        // directly evaluate
-        const stknode: IStkNode = {
-            data: String(expr.value),
-            inst: null,
-            kind: StkNodeKind.value,
-        };
-        this.stk.push(stknode);
-    } else if (expr.kind === "assign") {
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateAssign();
-    } else if (expr.kind === "variable") {
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateVariable();
-    } else if (expr.kind === "array") {
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateArray();
-    } else if (expr.kind === "function") {
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateFunction();
-    } else if (expr.kind === "closure") {
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateClosure();
-    } else if (expr.kind === "classconstant" || expr.kind === "constantstatement") {
-        expr.constants.forEach((constNode: ASTNode) => {
-            const stknode: IStkNode = {
-                data: constNode,
-                inst,
-                kind: StkNodeKind.ast,
-            };
-            this.stk.push(stknode);
-            this.evaluateConstant();
-            // save the const to symbol table
-            const addressNode: ASTNode = stkPop(this.stk, StkNodeKind.address);
-            const vslot = this.heap.ram.get(addressNode.data.vslotAddr);
-            this.env[0].st._constant.set(vslot.name, addressNode.data.vslotAddr);
-        });
-    } else if (expr.kind === "propertystatement") {
-        expr.properties.forEach((propertyNode: ASTNode) => {
-            const stknode: IStkNode = {
-                data: propertyNode,
-                inst,
-                kind: StkNodeKind.ast,
-            };
-            this.stk.push(stknode);
-            this.evaluateProperty();
-        });
-    } else if (expr.kind === "inline") {
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateInline();
-    } else if (expr.kind === "method") {
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateMethod();
-    } else if (expr.kind === "global") {
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateGlobal();
-    } else if (expr.kind === "offsetlookup") {
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateOffset();
-    } else if (expr.kind === "echo") {
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateEcho();
-    } else if (expr.kind === "switch") {
-        const instNode: IStkNode = {
-            data: null,
-            inst: "endSwitch",
-            kind: StkNodeKind.indicator,
-        };
-        this.stk.push(instNode);    // end insurance
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateSwitch();
-    } else if (expr.kind === "if") {
-        const instNode: IStkNode = {
-            data: null,
-            inst: "endIf",
-            kind: StkNodeKind.indicator,
-        };
-        this.stk.push(instNode);    // end insurance
-        const stknode: IStkNode = {
-            data: expr,
-            inst,
-            kind: StkNodeKind.ast,
-        };
-        this.stk.push(stknode);
-        this.evaluateIf();
-    } else {
-        throw new Error("Eval error: Unknown expression type: " + expr.kind);
+      }
     }
 };
 
@@ -551,10 +601,8 @@ export interface IHeap {
  * Stack node kinds, 0 for ast, 1 for value, 2 for address
  */
 export enum StkNodeKind {
-    ast,
     value,
-    address,
-    indicator,
+    computation, // Callback
 }
 
 /**
@@ -568,8 +616,8 @@ export enum StkNodeKind {
  * { kind: "ast", data: {...}, inst: "getAddress" }
  * { kind: "value", data: false, inst: null }
  * { kind: "address", data: 15073, inst: null }
- * { kind: "indicator", data: null, inst: "endAssign" }
- * { kind: "indicator", data: null, inst: "+" }
+ * { kind: "computation", data: null, inst: "endAssign" }
+ * { kind: "computation", data: null, inst: "+" }
  */
 export interface IStkNode {
     kind: StkNodeKind;
@@ -584,8 +632,8 @@ export interface IStkNode {
  * @param {StkNodeKind} kindMustBe
  * @param {string}      astKindMustBe
  */
-export function stkPop(stk: Stack<IStkNode>, kindMustBe: StkNodeKind, astKindMustBe?: string, indicatorMustBe?: string): IStkNode {
-    const node = stk.top.value;
+export function stkPop(stk: EvalStack, kindMustBe: StkNodeKind, astKindMustBe?: string, indicatorMustBe?: string): [IStkNode, EvalStack] {
+    const node = stk.head;
     switch (kindMustBe) {
         case StkNodeKind.ast: {
             if (node.kind !== StkNodeKind.ast) {
@@ -609,12 +657,12 @@ export function stkPop(stk: Stack<IStkNode>, kindMustBe: StkNodeKind, astKindMus
             }
             break;
         }
-        case StkNodeKind.indicator: {
-            if (node.kind !== StkNodeKind.indicator) {
-                throw new Error("Eval error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain indicator");
+        case StkNodeKind.computation: {
+            if (node.kind !== StkNodeKind.computation) {
+                throw new Error("Eval error: Evaluate wrong node: " + StkNodeKind[node.kind] + ", should contain computation");
             } else if (indicatorMustBe) {
                 if (node.inst !== indicatorMustBe) {
-                    throw new Error("Eval error: Evaluate wrong indicator: " + node.inst + ", indicator should be " + indicatorMustBe);
+                    throw new Error("Eval error: Evaluate wrong computation: " + node.inst + ", computation should be " + indicatorMustBe);
                 }
             }
             break;
@@ -622,6 +670,6 @@ export function stkPop(stk: Stack<IStkNode>, kindMustBe: StkNodeKind, astKindMus
         default:
             break;
     }
-    stk.pop();
-    return node;
+    return Stack.remove(stk);
 }
+    

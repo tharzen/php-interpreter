@@ -5,32 +5,28 @@
  * The Stack class represents a last-in-first-out (LIFO) stack of objects.
  * It is a recursion version implemented with linkedlist.
  */
+ 
+export type EmptyStack = null;
+export type StackType<T> = NonEmptyStack<T> | EmptyStack;
 
-import { INode, LinkedList } from "./linkedlist";
-
-export class Stack<T> extends LinkedList<T> {
-    public top: INode<T> = null;
-
-    /**
-     * @description
-     * Pushes the specified element to the stack
-     */
-    public push(val: T) {
-        this.add(val);
-        this.top = this.peekLast();
-    }
-
-    /**
-     * @description
-     * Pops the top element from the stack
-     */
-    public pop(): boolean {
-        if (this.remove()) {
-            this.top = this.peekLast();
-            return true;
-        } else {
-            this.top = null;
-            return false;
-        }
-    }
+export interface NonEmptyStack<T> {
+    head: T,
+    tail: StackType<T>
 }
+
+export var Stack = {
+  empty : null,
+
+  add : <T>(stack: StackType<T>, val: T) => {
+    return { head: val, tail: stack };
+  },
+  isEmpty : <T>(stack: StackType<T>) => {
+    return stack == null;
+  },
+  remove : <T>(stack: StackType<T>) => {
+    return [stack.head, stack.tail];
+  },
+  pop : <T>(stack: StackType<T>) => {
+    return stack.tail;
+  }
+};

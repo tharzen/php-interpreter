@@ -7,33 +7,33 @@
 import util = require("util");
 import { Stack } from "./stack";
 
-const stack = new Stack();
+var stack = Stack.empty;
 
 for (let i = 0; i < 5; i++) {
     const num = Math.floor(Math.random() * Math.floor(10));
     if (num > 3) {
         // push
-        console.log("stack length: " + stack.length());
+        console.log("stack empty: " + Stack.isEmpty(stack));
         console.log("Stack: ");
         console.log(util.inspect(stack, { depth: null }));
         console.log("----------------------------------------");
         console.log("Push " + num);
-        stack.push(num);
+        stack = Stack.add(stack, num);
         console.log(util.inspect(stack, { depth: null }));
-        stack.top.value === num ? console.log("Push correctly") : console.log("Something wrong");
-        console.log("stack length: " + stack.length());
+        stack.head === num ? console.log("Push correctly") : console.log("Something wrong");
+        console.log("stack empty: " + Stack.isEmpty(stack));
         console.log("----------------------------------------");
         console.log("----------------------------------------");
     } else {
         // pop
-        console.log("stack length: " + stack.length());
+        console.log("stack empty: " + Stack.isEmpty(stack));
         console.log("Stack: ");
         console.log(util.inspect(stack, { depth: null }));
         console.log("----------------------------------------");
         console.log("Pop");
-        stack.pop();
+        stack = Stack.pop(stack);
         console.log(util.inspect(stack, { depth: null }));
-        console.log("stack length: " + stack.length());
+        console.log("stack empty: " + Stack.isEmpty(stack));
         console.log("----------------------------------------");
         console.log("----------------------------------------");
     }

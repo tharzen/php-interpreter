@@ -7,10 +7,8 @@
 import { Interpreter } from "./interpreter/interpreter";
 
 const php =
-`
-<?php $a = 1;?>
-<div>Hello</div>
-<?php echo $a; ?>
+`<?php $a = "World";
+?><div>Hello<?php echo $a; ?></div>
 `;
 const interpreter = new Interpreter(php);
 interpreter.run();

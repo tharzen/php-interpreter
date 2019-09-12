@@ -11,6 +11,7 @@
 // ██████████████████████████████████████████████ MEMORY MODEL ██████████████████████████████████████████████
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
 
+// TODO: Convert this to an object
 // modifiers:     global,  static,  const,  public, protected, private, final,  abstract
 type modifiers = [boolean, boolean, boolean, boolean, boolean, boolean, boolean, boolean];
 
