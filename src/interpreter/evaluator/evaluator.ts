@@ -16,6 +16,9 @@ import { evaluateClosure } from "./evaluation/closure";
 import { evaluateConstant } from "./evaluation/const";
 import { evaluateFunction } from "./evaluation/function";
 import { evaluateGlobal } from "./evaluation/global";
+import { evaluateInline } from "./evaluation/inline";
+import { evaluateIf } from "./evaluation/if";
+import { evaluateSwitch } from "./evaluation/switch";
 import { evaluateEcho } from "./evaluation/internal/echo";
 import { evaluateMethod } from "./evaluation/method";
 import { evaluateOffset } from "./evaluation/offset";
@@ -123,6 +126,22 @@ export class Evaluator {
 
     /**
      * @description
+     * Evaluate the if statement
+     * @file
+     * evaluator/evaluation/if.ts
+     */
+    public evaluateIf = evaluateIf;
+
+    /**
+     * @description
+     * Evaluate the switch statement
+     * @file
+     * evaluator/evaluation/switch.ts
+     */
+    public evaluateSwitch = evaluateSwitch;
+
+    /**
+     * @description
      * Evaluate the function method
      * @file
      * evaluator/evaluation/method.ts
@@ -163,6 +182,14 @@ export class Evaluator {
 
     /**
      * @description
+     * Evaluate the inline code
+     * @file
+     * evaluator/evaluation/inline.ts
+     */
+    public evaluateInline = evaluateInline;
+
+    /**
+     * @description
      * Evaluate the echo function
      * @file
      * evaluator/evaluation/internal/echo.ts
@@ -186,8 +213,11 @@ export class Evaluator {
 
 Evaluator.prototype.run = function() {
     // the root node of AST is "Program", its children field contains all expressions needed to be evaluated,
-    // before pushing to stack, we need to LIFT some statements such as all functions,
-    // classes without extends / implements / use, and all traits, all interfaces
+    // before pushing to stack, we need to LIFT some statements such as all functions, classes without extends / implements / use, 
+    // and all traits, all interfaces, because they are global
+    // notice that "Program" may contain many different php snippet around "<?php ?>" php tags
+    // I have add these tags into AST for getting their positions (did not exist in our php-parser before)
+    // they can be seen as one part PHP as long as they are in the same php file or the same namespace
     const reorderAST = this.lift();
     for (const astNode of reorderAST) {
         const stknode: IStkNode = {
@@ -200,14 +230,40 @@ Evaluator.prototype.run = function() {
     while (this.stk.length() > 0) {
         this.evaluate();
     }
-    // console.log(util.inspect(this, { depth: null }));       // test
+    console.log(util.inspect(this, { depth: null }));       // test
     return this.res;
 };
 
 Evaluator.prototype.lift = function(): ASTNode[] {
+    // putting all PHP snippets into one array, surrounded with "<?php ?>"
+    const phpSnippets: ASTNode[] = [];
+    this.ast.children.forEach((node: ASTNode) => {
+        if (node.kind === "phpopentag") {
+            node.children.forEach((expr: ASTNode) => {
+                phpSnippets.push(expr);
+            });
+        } else {
+            // might be inline HTML
+            phpSnippets.push(node);
+        }
+    });
+
+    // extracting expressions from "block" AST node, not "block" in conditional / loop, just single block e.g. { $a = 1; }
+    // it looks trivial but it is neccessary for now if there are some functions in some independent blocks
+    const exprNode: ASTNode[] = [];
+    phpSnippets.forEach((node: ASTNode) => {
+        if (node.kind === "block") {
+            node.children.forEach((expr: ASTNode) => {
+                exprNode.push(expr);
+            });
+        } else {
+            exprNode.push(node);
+        }
+    });
+
     // use unshift but not push because last element push into stack should be evaluated first
     const reorderAST: ASTNode[] = [];
-    this.ast.children.forEach((child: ASTNode) => {
+    exprNode.forEach((child: ASTNode) => {
         switch (child.kind) {
             case "function":
             case "trait":
@@ -234,7 +290,7 @@ Evaluator.prototype.lift = function(): ASTNode[] {
                         }
                     }
                     if (useTrait) {
-                        reorderAST.unshift(child);     // not normal class, do nothing
+                        reorderAST.unshift(child);     // class with trait, do nothing
                     } else {
                         // lift
                         const stknode: IStkNode = {
@@ -288,7 +344,7 @@ Evaluator.prototype.evaluate = function() {
                     inst: "endAssign",
                     kind: StkNodeKind.indicator,
                 };
-                this.stk.push(instNode);    // insurance
+                this.stk.push(instNode);    // end insurance
                 const stknode: IStkNode = {
                     data: expr.expression,
                     inst: null,
@@ -395,7 +451,7 @@ Evaluator.prototype.evaluate = function() {
             const addressNode: ASTNode = stkPop(this.stk, StkNodeKind.address);
             const vslot = this.heap.ram.get(addressNode.data.vslotAddr);
             this.env[0].st._constant.set(vslot.name, addressNode.data.vslotAddr);
-        }); 
+        });
     } else if (expr.kind === "propertystatement") {
         expr.properties.forEach((propertyNode: ASTNode) => {
             const stknode: IStkNode = {
@@ -406,6 +462,14 @@ Evaluator.prototype.evaluate = function() {
             this.stk.push(stknode);
             this.evaluateProperty();
         });
+    } else if (expr.kind === "inline") {
+        const stknode: IStkNode = {
+            data: expr,
+            inst,
+            kind: StkNodeKind.ast,
+        };
+        this.stk.push(stknode);
+        this.evaluateInline();
     } else if (expr.kind === "method") {
         const stknode: IStkNode = {
             data: expr,
@@ -438,6 +502,34 @@ Evaluator.prototype.evaluate = function() {
         };
         this.stk.push(stknode);
         this.evaluateEcho();
+    } else if (expr.kind === "switch") {
+        const instNode: IStkNode = {
+            data: null,
+            inst: "endSwitch",
+            kind: StkNodeKind.indicator,
+        };
+        this.stk.push(instNode);    // end insurance
+        const stknode: IStkNode = {
+            data: expr,
+            inst,
+            kind: StkNodeKind.ast,
+        };
+        this.stk.push(stknode);
+        this.evaluateSwitch();
+    } else if (expr.kind === "if") {
+        const instNode: IStkNode = {
+            data: null,
+            inst: "endIf",
+            kind: StkNodeKind.indicator,
+        };
+        this.stk.push(instNode);    // end insurance
+        const stknode: IStkNode = {
+            data: expr,
+            inst,
+            kind: StkNodeKind.ast,
+        };
+        this.stk.push(stknode);
+        this.evaluateIf();
     } else {
         throw new Error("Eval error: Unknown expression type: " + expr.kind);
     }
