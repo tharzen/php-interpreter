@@ -3,9 +3,8 @@
       "module": "commonjs",
       "moduleResolution": "node",
       "target": "es6",
-      "rootDir": "src",
-      "outDir": "dist",
-      "sourceMap": true,
+      "rootDir": "./src",
+      "outDir": "./dist",
       "noImplicitAny": false,
       "noImplicitReturns": true,
       "noImplicitThis": true

@@ -7,8 +7,8 @@
  * https://github.com/php/php-langspec/tree/master/spec
  */
 
+import { AST } from "php-parser";
 import { Evaluator } from "./evaluator/evaluator";
-import { AST } from "./php-parser/src/ast";
 import * as Parser from "./php-parser/src/index.js";
 
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
@@ -48,7 +48,7 @@ Interpreter.prototype.run = function() {
         },
     });
     // TODO: preset some options such as from `php.ini`: this.ini and then evaluate AST
-    this.ast = parser.parseCode(this.src);
+    this.ast = parser.parseCode(this.src, "");
     this.evl = new Evaluator(parser, this.ast);
     this.res = this.evl.run();
 };

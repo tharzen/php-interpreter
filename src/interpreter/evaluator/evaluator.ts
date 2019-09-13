@@ -4,9 +4,8 @@
  * @description
  * The main entry of evaluator.
  */
+import { AST, Node as ASTNode } from "php-parser";
 import util = require("util");
-import { Node as ASTNode } from "../php-parser/src/ast/node";
-import { AST } from "../php-parser/src/index";
 import { Env } from "./environment";
 import { evaluateArray } from "./evaluation/array";
 import { evaluateAssign } from "./evaluation/assign";
@@ -16,13 +15,14 @@ import { evaluateClosure } from "./evaluation/closure";
 import { evaluateConstant } from "./evaluation/const";
 import { evaluateFunction } from "./evaluation/function";
 import { evaluateGlobal } from "./evaluation/global";
-import { evaluateInline } from "./evaluation/inline";
 import { evaluateIf } from "./evaluation/if";
-import { evaluateSwitch } from "./evaluation/switch";
+import { evaluateInclude } from "./evaluation/include";     // mock include
+import { evaluateInline } from "./evaluation/inline";
 import { evaluateEcho } from "./evaluation/internal/echo";
 import { evaluateMethod } from "./evaluation/method";
 import { evaluateOffset } from "./evaluation/offset";
 import { evaluateProperty } from "./evaluation/property";
+import { evaluateSwitch } from "./evaluation/switch";
 import { evaluateVariable } from "./evaluation/variable";
 import { Stack } from "./utils/stack";
 
@@ -190,6 +190,14 @@ export class Evaluator {
 
     /**
      * @description
+     * Evaluate the include code
+     * @file
+     * evaluator/evaluation/include.ts
+     */
+    public evaluateInclude = evaluateInclude;
+
+    /**
+     * @description
      * Evaluate the echo function
      * @file
      * evaluator/evaluation/internal/echo.ts
@@ -213,7 +221,7 @@ export class Evaluator {
 
 Evaluator.prototype.run = function() {
     // the root node of AST is "Program", its children field contains all expressions needed to be evaluated,
-    // before pushing to stack, we need to LIFT some statements such as all functions, classes without extends / implements / use, 
+    // before pushing to stack, we need to LIFT some statements such as all functions, classes without extends / implements / use,
     // and all traits, all interfaces, because they are global
     // notice that "Program" may contain many different php snippet around "<?php ?>" php tags
     // I have add these tags into AST for getting their positions (did not exist in our php-parser before)
@@ -230,7 +238,7 @@ Evaluator.prototype.run = function() {
     while (this.stk.length() > 0) {
         this.evaluate();
     }
-    console.log(util.inspect(this, { depth: null }));       // test
+    // console.log(util.inspect(this, { depth: null }));       // test
     return this.res;
 };
 
@@ -323,7 +331,7 @@ Evaluator.prototype.lift = function(): ASTNode[] {
 
 Evaluator.prototype.evaluate = function() {
     // each time evaluate top element of stack
-    const topNode: ASTNode = stkPop(this.stk, StkNodeKind.ast);
+    const topNode: IStkNode = stkPop(this.stk, StkNodeKind.ast);
     const expr: ASTNode = topNode.data;
     const inst = topNode.inst;
     if (expr.kind === "expressionstatement") {
@@ -369,6 +377,16 @@ Evaluator.prototype.evaluate = function() {
                 };
                 this.stk.push(stknode);
                 this.evaluateVariable();
+                break;
+            }
+            case "include": {
+                const stknode: IStkNode = {
+                    data: expr.expression,
+                    inst: null,
+                    kind: StkNodeKind.ast,
+                };
+                this.stk.push(stknode);
+                this.evaluateInclude();
                 break;
             }
             default:
@@ -448,7 +466,7 @@ Evaluator.prototype.evaluate = function() {
             this.stk.push(stknode);
             this.evaluateConstant();
             // save the const to symbol table
-            const addressNode: ASTNode = stkPop(this.stk, StkNodeKind.address);
+            const addressNode: IStkNode = stkPop(this.stk, StkNodeKind.address);
             const vslot = this.heap.ram.get(addressNode.data.vslotAddr);
             this.env[0].st._constant.set(vslot.name, addressNode.data.vslotAddr);
         });
