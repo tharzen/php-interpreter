@@ -1,6 +1,24 @@
 # Development
 
+## Usage
+
+Please install `ts-node` for directly running typescript files. The install command is `npm install -g ts-node`.
+
+And then in the root directory, run `ts-node src/main.ts`. It will run the `main.ts` which is the entry file for the php-interpreter right now.
+
+## Test
+
 Use [Jest](https://jestjs.io/en/) testing framework.
+
+In the root directory, run `npm test`. This command will run all testcases in `src/main.spec.ts`.
+
+## Bundle
+
+Use [Webpack](https://webpack.js.org/) module bundler.
+
+In the root directory, run `npx webpack`. This command will create a `bundle.js` as an output file in `dist` directory. Currently the entry file of webpack is `src/main.ts`.
+
+Then the `bundle.js` can be run in NodeJS or browser.
 
 ## Language Constructs
 
@@ -30,8 +48,6 @@ Use [Jest](https://jestjs.io/en/) testing framework.
 - closure ✔
 
 ## Testcases
-
-Try to change the PHP input in `src/main.ts` and then run `ts-node main.ts`. The evaluator will be printed for test.
 
 All passed testcases:
 ```php
