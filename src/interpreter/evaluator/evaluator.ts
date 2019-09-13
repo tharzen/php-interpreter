@@ -4,7 +4,7 @@
  * @description
  * The main entry of evaluator.
  */
-import { AST, Node as ASTNode } from "php-parser";
+import { AST, Node as ASTNode, Parser } from "php-parser";
 import util = require("util");
 import { Env } from "./environment";
 import { evaluateArray } from "./evaluation/array";
@@ -31,7 +31,7 @@ import { Stack } from "./utils/stack";
 // ██████████████████████████████████████████████████████████████████████████████████████████████████████████
 
 /**
- * @property {any}     psr - php-parser, for 'including', 'require'
+ * @property {Parser}  psr - php-parser, for 'including', 'require'
  * @property {AST}     ast - abstract syntax tree of current file
  * @property {Map}     env - two environments which technically are scopes, global and local
  * @property {number}  cur - current environment index, 0 for global, 1 for local
@@ -41,7 +41,7 @@ import { Stack } from "./utils/stack";
  * @property {IHeap}   heap - storage, such as variable bindings, function declaration, class declaration, namespace location and etc.
  */
 export class Evaluator {
-    public psr: any;
+    public psr: Parser;
     public ast: AST;
     public env: Env[];
     public cur: number;
