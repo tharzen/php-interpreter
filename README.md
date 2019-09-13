@@ -27,7 +27,7 @@ Currently there is no intermediate tier part.
 The PHP language specification [php-langspec](https://github.com/php/php-langspec/blob/master/spec).
 
 ### Parser
-For front end parser, information can be found in [README.md](https://github.com/tharzen/php-parser/blob/master/README.md) and [DEV.md](https://github.com/tharzen/php-parser/blob/master/DEV.md).
+For front end parser, information can be found in [README.md](https://github.com/tharzen/php-parser/blob/master/README.md) and [DEV.md](https://github.com/tharzen/php-parser/blob/master/plugin/DEV.md).
 
 ### Memory Model 
 The implementation of variable system is based on abstract model for storing variables defined in [PHP langspec - memory model](https://github.com/php/php-langspec/blob/master/spec/04-basic-concepts.md#the-memory-model).
