@@ -1,6 +1,12 @@
 # Development
 
+## Dependency
+
+Actually this project only depends on [glayzzle/php-parser](https://github.com/glayzzle/php-parser/) and typescript. Other dependencies are all for development.
+
 ## Usage
+
+Please clone this repository using `git clone https://github.com/tharzen/php-interpreter.git`. And then run `git submodule init` and `git submodule update` for the php-parser submodule.
 
 Please install `ts-node` for directly running typescript files. The install command is `npm install -g ts-node`.
 
