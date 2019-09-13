@@ -14,6 +14,26 @@ Please install `ts-node` for directly running typescript files. The install comm
 
 And then in the root directory, run `ts-node src/main.ts`. It will run the `main.ts` which is the entry file for the php-interpreter right now.
 
+## Display
+
+Use [ololog](https://www.npmjs.com/package/ololog) as print prettier.
+
+The interpreter provides several APIs for displaying different parts of interpreter. They can be found in `src/interpreter/interpreter.ts/display()`.
+
+For instance:
+```typescript
+import { Interpreter } from "./interpreter/interpreter";
+const php = `<?php $a = 1;?>`;
+const interpreter = new Interpreter(php);
+interpreter.run();
+interpreter.display("ast");
+interpreter.display("environment");
+interpreter.display("heap");
+interpreter.display("stack");
+interpreter.display("result");
+interpreter.display("log");
+```
+
 ## Test
 
 Use [Jest](https://jestjs.io/en/) testing framework.
