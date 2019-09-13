@@ -2,7 +2,9 @@
 
 ## Dependency
 
-Actually this project only depends on [glayzzle/php-parser](https://github.com/glayzzle/php-parser/) and typescript. Other dependencies are all for development.
+Actually this project only depends on [glayzzle/php-parser](https://github.com/glayzzle/php-parser/) and typescript. And since we use the php-parser source code in our own repository, not on npm, there is no dependency for production.
+
+Other dependencies are all for development.
 
 ## Usage
 

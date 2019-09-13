@@ -4,7 +4,6 @@
  * @description
  * The main entry for interpreting PHP.
  */
-import util = require("util");
 import { Interpreter } from "./interpreter/interpreter";
 
 const php =
@@ -19,4 +18,10 @@ const php =
 `;
 const interpreter = new Interpreter(php);
 interpreter.run();
-console.log(util.inspect(interpreter, { depth: null }));       // test
+
+interpreter.display("ast");
+interpreter.display("environment");
+interpreter.display("heap");
+interpreter.display("stack");
+interpreter.display("result");
+interpreter.display("log");
