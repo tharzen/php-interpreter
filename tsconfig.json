@@ -1,5 +1,11 @@
 {
     "compilerOptions": {
+      "baseUrl": ".",
+      "paths": {
+        "php-parser": [
+          "src/interpreter/php-parser"
+        ]
+      },
       "module": "commonjs",
       "moduleResolution": "node",
       "target": "es6",
