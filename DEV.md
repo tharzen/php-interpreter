@@ -12,6 +12,8 @@ Please clone this repository using `git clone https://github.com/tharzen/php-int
 
 Please install `ts-node` for directly running typescript files. The install command is `npm install -g ts-node`.
 
+You might have to possibly delete the `package-lock.json` file before running `npm install` with admin priviledges.
+
 And then in the root directory, run `ts-node src/main.ts`. It will run the `main.ts` which is the entry file for the php-interpreter right now.
 
 ## Display
